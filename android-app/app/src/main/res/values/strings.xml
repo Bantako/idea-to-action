@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">idea to action</string>
+    <string name="inbox_bottomnav_label">Inbox</string>
+    <string name="themes_bottomnav_label">テーマ</string>
+    <string name="today_bottomnav_label">今日</string>
+    <string name="review_bottomnav_label">振り返り</string>
+    <string name="settings_bottomnav_label">設定</string>
+</resources>

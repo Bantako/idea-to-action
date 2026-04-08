@@ -1,0 +1,57 @@
+plugins {
+    alias(libs.plugins.app.android.application)
+    alias(libs.plugins.app.android.compose)
+    alias(libs.plugins.app.android.hilt)
+    alias(libs.plugins.app.android.room)
+    alias(libs.plugins.serialization)
+}
+
+android {
+    namespace = "org.mrlem.composesample"
+
+    defaultConfig {
+        applicationId = "org.mrlem.composesample"
+        targetSdk = libs.versions.target.sdk.get().toInt()
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+dependencies {
+    implementation(project(":features:library:data"))
+    implementation(project(":features:library:ui"))
+    implementation(project(":features:overview:ui"))
+    implementation(libs.androidx.hilt.navigation)
+    implementation(project(":theme"))
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network)
+    implementation(libs.okhttp)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}
