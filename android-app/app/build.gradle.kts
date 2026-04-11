@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.app.android.application)
     alias(libs.plugins.app.android.compose)
     alias(libs.plugins.app.android.hilt)
+    alias(libs.plugins.app.android.room)
 }
 
 android {
