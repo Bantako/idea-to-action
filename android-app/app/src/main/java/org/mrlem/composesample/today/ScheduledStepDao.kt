@@ -11,11 +11,17 @@ interface ScheduledStepDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entry: ScheduledStepEntity)
 
-    @Query("SELECT * FROM scheduled_step WHERE date = :date ORDER BY startTime ASC")
+    @Query("SELECT * FROM scheduled_step WHERE date = :date ORDER BY sortOrder ASC")
     fun observeByDate(date: String): Flow<List<ScheduledStepEntity>>
 
-    @Query("SELECT * FROM scheduled_step WHERE date = :date ORDER BY startTime ASC")
+    @Query("SELECT * FROM scheduled_step WHERE date = :date ORDER BY sortOrder ASC")
     suspend fun getByDate(date: String): List<ScheduledStepEntity>
+
+    @Query("SELECT MAX(sortOrder) FROM scheduled_step WHERE date = :date")
+    suspend fun getMaxSortOrder(date: String): Int?
+
+    @Query("UPDATE scheduled_step SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun updateSortOrder(id: String, sortOrder: Int)
 
     @Query("SELECT * FROM scheduled_step WHERE stepId = :stepId ORDER BY date DESC")
     fun observeByStep(stepId: String): Flow<List<ScheduledStepEntity>>
@@ -33,9 +39,7 @@ interface ScheduledStepDao {
     suspend fun markResult(id: String, result: String)
 
     @Query("""
-        SELECT ss.id, ss.stepId, ss.date, ss.startTime, ss.durationMinutes,
-               ss.started, ss.done, ss.memo, ss.actualStartedAt, ss.actualEndedAt,
-               ss.notificationEnabled, ss.result
+        SELECT ss.*
         FROM scheduled_step ss
         INNER JOIN step s ON ss.stepId = s.id
         WHERE s.themeId = :themeId AND ss.result IS NOT NULL

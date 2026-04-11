@@ -115,11 +115,25 @@ internal fun ThemeDetailScreen(
 
         HorizontalDivider()
 
-        Text(
-            text = "ステップ",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(AppTheme.size.medium),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppTheme.size.medium),
+        ) {
+            Text(
+                text = "ステップ",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            if (state.totalStepCount > 0) {
+                Text(
+                    text = "完了 ${state.completedStepCount} / ${state.totalStepCount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+        }
 
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (state.steps.isEmpty()) {

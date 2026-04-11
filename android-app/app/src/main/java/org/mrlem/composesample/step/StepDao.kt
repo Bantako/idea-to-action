@@ -40,4 +40,10 @@ interface StepDao {
 
     @Query("SELECT * FROM step WHERE themeId = :themeId AND status != 'archived' ORDER BY createdAt ASC")
     suspend fun getActiveByTheme(themeId: String): List<StepEntity>
+
+    @Query("SELECT COUNT(*) FROM step WHERE themeId = :themeId AND status = 'archived'")
+    fun observeArchivedCountByTheme(themeId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM step WHERE themeId = :themeId")
+    fun observeTotalCountByTheme(themeId: String): Flow<Int>
 }

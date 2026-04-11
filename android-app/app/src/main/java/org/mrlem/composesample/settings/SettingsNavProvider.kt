@@ -10,8 +10,10 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import org.mrlem.android.core.feature.nav.MainNavKey
+import org.mrlem.android.core.feature.nav.Navigator
 import org.mrlem.android.core.feature.ui.NavProvider
 import org.mrlem.composesample.R
+import org.mrlem.composesample.theme.ThemesKey
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,10 +21,12 @@ import javax.inject.Singleton
 data object SettingsKey : MainNavKey
 
 @Singleton
-class SettingsNavProvider @Inject constructor() : NavProvider() {
+class SettingsNavProvider @Inject constructor(
+    private val navigator: Navigator,
+) : NavProvider() {
 
     override val navBarItem = BottomBarItem(
-        index = 5,
+        index = 3,
         labelResId = R.string.settings_bottomnav_label,
         icon = Icons.Filled.Info,
         key = SettingsKey,
@@ -31,7 +35,12 @@ class SettingsNavProvider @Inject constructor() : NavProvider() {
     override val entryBuilders: EntryProviderScope<NavKey>.(SnackbarHostState, PaddingValues) -> Unit =
         { _, innerPadding ->
             entry<SettingsKey> {
-                SettingsScreen(modifier = Modifier.padding(innerPadding))
+                SettingsScreen(
+                    onNavigateToThemes = {
+                        navigator.navigate(Navigator.Operation.Push(ThemesKey))
+                    },
+                    modifier = Modifier.padding(innerPadding),
+                )
             }
         }
 }

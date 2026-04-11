@@ -7,6 +7,8 @@ data class ThemeDetailViewState(
     val goal: String = "",
     val weight: String = "medium",
     val steps: List<StepEntity> = emptyList(),
+    val completedStepCount: Int = 0,
+    val totalStepCount: Int = 0,
     val activityLog: List<ActivityLogEntry> = emptyList(),
 )
 

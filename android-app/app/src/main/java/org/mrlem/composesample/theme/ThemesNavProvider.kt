@@ -2,8 +2,6 @@ package org.mrlem.composesample.theme
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -23,12 +21,7 @@ class ThemesNavProvider @Inject constructor(
     private val navigator: Navigator,
 ) : NavProvider() {
 
-    override val navBarItem = BottomBarItem(
-        index = 3,
-        labelResId = R.string.themes_bottomnav_label,
-        icon = Icons.Filled.Star,
-        key = ThemesKey,
-    )
+    override val navBarItem: BottomBarItem? = null
 
     override val entryBuilders: EntryProviderScope<NavKey>.(SnackbarHostState, PaddingValues) -> Unit =
         { _, innerPadding ->

@@ -21,7 +21,7 @@ import org.mrlem.composesample.today.ScheduledStepEntity
         ScheduledStepEntity::class,
         CoachingMessageEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class IdeaToActionDatabase : RoomDatabase() {

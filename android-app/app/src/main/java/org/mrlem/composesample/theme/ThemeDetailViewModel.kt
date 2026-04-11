@@ -37,8 +37,10 @@ class ThemeDetailViewModel @AssistedInject constructor(
     override val state = combine(
         themeDao.observeById(key.themeId).filterNotNull(),
         stepDao.observeByTheme(key.themeId),
+        stepDao.observeArchivedCountByTheme(key.themeId),
+        stepDao.observeTotalCountByTheme(key.themeId),
         scheduledStepDao.observeByTheme(key.themeId),
-    ) { theme, steps, scheduledSteps ->
+    ) { theme, steps, completedCount, totalCount, scheduledSteps ->
         val stepTitleMap = steps.associate { it.id to it.title }
         val logEntries = scheduledSteps.mapNotNull { ss ->
             val result = ss.result ?: return@mapNotNull null
@@ -54,6 +56,8 @@ class ThemeDetailViewModel @AssistedInject constructor(
             goal = theme.goal ?: "",
             weight = theme.weight,
             steps = steps,
+            completedStepCount = completedCount,
+            totalStepCount = totalCount,
             activityLog = logEntries,
         )
     }.stateIn(viewModelScope, WhileSubscribed(), ThemeDetailViewState())

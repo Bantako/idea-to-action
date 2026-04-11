@@ -2,9 +2,12 @@ package org.mrlem.composesample.today
 
 data class TodayViewState(
     val selectedDate: String = "",
-    val timedItems: List<ScheduledStepUi> = emptyList(),
-    val untimedItems: List<ScheduledStepUi> = emptyList(),
+    val items: List<ScheduledStepUi> = emptyList(),
     val detailItem: ScheduledStepUi? = null,
+    val isReviewMode: Boolean = false,
+    val autoSuggestPending: Boolean = false,
+    val showAddSheet: Boolean = false,
+    val availableSteps: List<StepPickerUi> = emptyList(),
 )
 
 data class ScheduledStepUi(
@@ -14,11 +17,15 @@ data class ScheduledStepUi(
     val starterAction: String?,
     val themeName: String,
     val themeGoal: String?,
-    val startTime: Int?,
-    val durationMinutes: Int?,
     val started: Boolean,
     val done: Boolean,
     val memo: String?,
+)
+
+data class StepPickerUi(
+    val stepId: String,
+    val stepTitle: String,
+    val themeName: String,
 )
 
 sealed interface TodayViewAction {
@@ -26,4 +33,9 @@ sealed interface TodayViewAction {
     data object HideDetail : TodayViewAction
     data class MarkStarted(val scheduledStepId: String, val memo: String?) : TodayViewAction
     data class SwitchDate(val date: String) : TodayViewAction
+    data object AutoSuggestHandled : TodayViewAction
+    data object ShowAddSheet : TodayViewAction
+    data object HideAddSheet : TodayViewAction
+    data class AddStepToToday(val stepId: String) : TodayViewAction
+    data class MoveStep(val scheduledStepId: String, val direction: Int) : TodayViewAction // -1=up, +1=down
 }

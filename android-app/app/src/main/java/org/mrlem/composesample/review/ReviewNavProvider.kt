@@ -2,8 +2,6 @@ package org.mrlem.composesample.review
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.EntryProviderScope
@@ -20,12 +18,7 @@ class ReviewNavProvider @Inject constructor(
     private val navigator: Navigator,
 ) : NavProvider() {
 
-    override val navBarItem = BottomBarItem(
-        index = 4,
-        labelResId = R.string.review_bottomnav_label,
-        icon = Icons.Filled.Done,
-        key = ReviewKey,
-    )
+    override val navBarItem: BottomBarItem? = null
 
     override val entryBuilders: EntryProviderScope<NavKey>.(SnackbarHostState, PaddingValues) -> Unit =
         { _, innerPadding ->

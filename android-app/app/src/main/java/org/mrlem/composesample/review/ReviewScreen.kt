@@ -162,7 +162,7 @@ internal fun ReviewScreen(
 }
 
 @Composable
-private fun ReviewStepRow(
+internal fun ReviewStepRow(
     item: ReviewStepUi,
     onDetailClick: () -> Unit,
     onMarkResult: (String) -> Unit,

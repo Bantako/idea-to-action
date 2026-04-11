@@ -8,6 +8,7 @@ data class ScheduledStepEntity(
     @PrimaryKey val id: String,
     val stepId: String,
     val date: String,              // "yyyy-MM-dd"
+    val sortOrder: Int = 0,
     val startTime: Int? = null,    // minutes from midnight
     val durationMinutes: Int? = null,
     val started: Boolean = false,
