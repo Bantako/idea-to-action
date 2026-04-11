@@ -65,7 +65,8 @@ fun TodayScreen(
 
         if (state.readyNodes.isNotEmpty()) {
             item {
-                SectionHeader("着手できます")
+                val label = if (state.aiRanked) "着手できます（AI おすすめ順）" else "着手できます"
+                SectionHeader(label)
             }
             items(state.readyNodes, key = { it.id }) { node ->
                 ReadyNodeRow(

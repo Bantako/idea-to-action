@@ -18,6 +18,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        val anthropicKey = project.findProperty("anthropic.api.key") as? String ?: ""
+        buildConfigField("String", "ANTHROPIC_API_KEY", "\"$anthropicKey\"")
     }
 
     buildTypes {
@@ -40,6 +43,7 @@ android {
 dependencies {
     implementation(project(":theme"))
     implementation("androidx.activity:activity-compose")
+    implementation(libs.okhttp)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.hilt.navigation)
     implementation(libs.androidx.material.icons)
