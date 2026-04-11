@@ -24,11 +24,5 @@ include(
     ":core:di",
     ":core:feature:nav",
     ":core:feature:ui",
-    ":features:library:data",
-    ":features:library:domain",
-    ":features:library:nav",
-    ":features:library:ui",
-    ":features:overview:nav",
-    ":features:overview:ui",
     ":theme",
 )
