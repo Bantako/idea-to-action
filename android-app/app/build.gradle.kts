@@ -40,6 +40,10 @@ android {
 dependencies {
     implementation(project(":theme"))
     implementation("androidx.activity:activity-compose")
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.hilt.navigation)
+    implementation(libs.androidx.material.icons)
+    implementation(libs.kotlin.coroutines)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.ui.test.junit4)
