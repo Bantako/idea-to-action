@@ -12,11 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,28 +65,6 @@ fun CaptureScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            if (state.isLoadingAi) {
-                item {
-                    Text(
-                        text = "AI が関連ノードを確認中…",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
-                }
-            }
-
-            if (state.suggestions.isNotEmpty()) {
-                items(state.suggestions, key = { "${it.newNodeId}-${it.relatedNode.id}" }) { suggestion ->
-                    SuggestionCard(
-                        suggestion = suggestion,
-                        onAccept = { viewModel.onAction(CaptureAction.AcceptSuggestion(suggestion)) },
-                        onDismiss = { viewModel.onAction(CaptureAction.DismissSuggestion(suggestion)) },
-                    )
-                }
-                item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
-            }
-
             items(state.nodes, key = { it.id }) { node ->
                 Text(
                     text = node.title,
@@ -99,41 +74,25 @@ fun CaptureScreen(
                 )
                 HorizontalDivider()
             }
-        }
-    }
-}
 
-@Composable
-private fun SuggestionCard(
-    suggestion: NodeSuggestion,
-    onAccept: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "「${suggestion.relatedNode.title}」との関連が考えられます",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                OutlinedButton(onClick = onDismiss) {
-                    Text("スキップ")
+            if (state.aiLog.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "AI がまとめた関連",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+                    )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = onAccept) {
-                    Text("エッジを追加")
+                items(state.aiLog, key = { "${it.newNodeTitle}-${it.relatedNodeTitle}" }) { entry ->
+                    Text(
+                        text = "「${entry.newNodeTitle}」→「${entry.relatedNodeTitle}」",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                    )
                 }
             }
         }

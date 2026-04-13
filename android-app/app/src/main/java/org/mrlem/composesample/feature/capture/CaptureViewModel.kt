@@ -14,23 +14,20 @@ import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.domain.NodeRepository
 import javax.inject.Inject
 
-data class NodeSuggestion(
-    val newNodeId: Long,
-    val relatedNode: NodeEntity,
+data class AiActivityEntry(
+    val newNodeTitle: String,
+    val relatedNodeTitle: String,
 )
 
 data class CaptureState(
     val input: String = "",
     val nodes: List<NodeEntity> = emptyList(),
-    val suggestions: List<NodeSuggestion> = emptyList(),
-    val isLoadingAi: Boolean = false,
+    val aiLog: List<AiActivityEntry> = emptyList(),
 )
 
 sealed class CaptureAction {
     data class InputChanged(val text: String) : CaptureAction()
     object Submit : CaptureAction()
-    data class AcceptSuggestion(val suggestion: NodeSuggestion) : CaptureAction()
-    data class DismissSuggestion(val suggestion: NodeSuggestion) : CaptureAction()
 }
 
 @HiltViewModel
@@ -53,15 +50,6 @@ class CaptureViewModel @Inject constructor(
                 when (action) {
                     is CaptureAction.InputChanged -> _state.update { it.copy(input = action.text) }
                     is CaptureAction.Submit -> handleSubmit()
-                    is CaptureAction.AcceptSuggestion -> {
-                        repository.addEdge(
-                            fromId = action.suggestion.relatedNode.id,
-                            toId = action.suggestion.newNodeId,
-                        )
-                        _state.update { it.copy(suggestions = it.suggestions - action.suggestion) }
-                    }
-                    is CaptureAction.DismissSuggestion ->
-                        _state.update { it.copy(suggestions = it.suggestions - action.suggestion) }
                 }
             }
         }
@@ -76,16 +64,15 @@ class CaptureViewModel @Inject constructor(
         _state.update { it.copy(input = "") }
 
         if (aiService.isAvailable && existingNodes.isNotEmpty()) {
-            _state.update { it.copy(isLoadingAi = true) }
             val relatedIds = aiService.suggestRelatedNodeIds(title, existingNodes)
-            val newSuggestions = relatedIds.mapNotNull { id ->
-                existingNodes.find { it.id == id }?.let { NodeSuggestion(newNodeId, it) }
+            val newEntries = relatedIds.mapNotNull { id ->
+                existingNodes.find { it.id == id }?.let { related ->
+                    repository.addEdge(fromId = related.id, toId = newNodeId)
+                    AiActivityEntry(newNodeTitle = title, relatedNodeTitle = related.title)
+                }
             }
-            _state.update {
-                it.copy(
-                    suggestions = it.suggestions + newSuggestions,
-                    isLoadingAi = false,
-                )
+            if (newEntries.isNotEmpty()) {
+                _state.update { it.copy(aiLog = newEntries + it.aiLog) }
             }
         }
     }
