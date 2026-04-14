@@ -1,7 +1,9 @@
 package org.mrlem.composesample.feature.graph
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,6 +93,7 @@ fun GraphScreen(
                 count = themeItems.size,
                 expanded = expanded,
                 onToggle = { viewModel.onAction(GraphAction.ToggleTheme(theme.id)) },
+                onLongPress = { viewModel.onAction(GraphAction.ShowDeleteTheme(theme)) },
             )
 
             if (expanded) {
@@ -267,6 +270,26 @@ fun GraphScreen(
         )
     }
 
+    // テーマ削除確認ダイアログ
+    if (state.deleteThemeTarget != null) {
+        val target = state.deleteThemeTarget!!
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(GraphAction.DismissDeleteTheme) },
+            title = { Text("「${target.name}」を削除") },
+            text = { Text("テーマを削除します。所属ノードは未整理に戻ります。") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onAction(GraphAction.ConfirmDeleteTheme) }) {
+                    Text("削除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(GraphAction.DismissDeleteTheme) }) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+
     // テーマ作成ダイアログ
     if (state.showCreateTheme) {
         var themeName by remember { mutableStateOf("") }
@@ -320,17 +343,19 @@ private fun SectionHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ThemeSectionHeader(
     theme: ThemeEntity,
     count: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .combinedClickable(onClick = onToggle, onLongClick = onLongPress)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

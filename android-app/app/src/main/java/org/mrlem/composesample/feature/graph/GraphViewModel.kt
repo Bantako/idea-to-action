@@ -36,6 +36,7 @@ data class GraphState(
     val addEdgeTarget: NodeEntity? = null,
     val assignThemeTarget: NodeEntity? = null,
     val editTarget: NodeEntity? = null,
+    val deleteThemeTarget: ThemeEntity? = null,
     val showCreateTheme: Boolean = false,
 ) {
     val unorganizedItems: List<NodeItem>
@@ -59,6 +60,9 @@ sealed class GraphAction {
     object ShowCreateTheme : GraphAction()
     object DismissCreateTheme : GraphAction()
     data class CreateTheme(val name: String) : GraphAction()
+    data class ShowDeleteTheme(val theme: ThemeEntity) : GraphAction()
+    object DismissDeleteTheme : GraphAction()
+    object ConfirmDeleteTheme : GraphAction()
     data class ShowEdit(val node: NodeEntity) : GraphAction()
     object DismissEdit : GraphAction()
     data class SaveEdit(val title: String, val body: String) : GraphAction()
@@ -146,6 +150,17 @@ class GraphViewModel @Inject constructor(
                             themeRepository.create(action.name)
                         }
                         _state.update { it.copy(showCreateTheme = false) }
+                    }
+                    is GraphAction.ShowDeleteTheme -> {
+                        _state.update { it.copy(deleteThemeTarget = action.theme) }
+                    }
+                    is GraphAction.DismissDeleteTheme -> {
+                        _state.update { it.copy(deleteThemeTarget = null) }
+                    }
+                    is GraphAction.ConfirmDeleteTheme -> {
+                        val target = _state.value.deleteThemeTarget ?: return@collect
+                        _state.update { it.copy(deleteThemeTarget = null) }
+                        themeRepository.delete(target)
                     }
                     is GraphAction.ShowEdit -> {
                         _state.update { it.copy(editTarget = action.node) }
