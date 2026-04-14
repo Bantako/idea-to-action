@@ -1,7 +1,8 @@
 package org.mrlem.composesample.domain
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import org.mrlem.composesample.data.db.EdgeDao
 import org.mrlem.composesample.data.db.EdgeEntity
 import org.mrlem.composesample.data.db.EdgeType
@@ -25,27 +26,19 @@ class NodeRepository @Inject constructor(
     fun observeEdges(): Flow<List<EdgeEntity>> = edgeDao.observeAll()
 
     /**
-     * ACTIVE ノードと、着手可能（IDEA かつ全 PREREQUISITE が DONE）なノードを返す。
+     * ACTIVE ノードと READY ノードを返す。
      */
     fun observeActionable(): Flow<Pair<List<NodeEntity>, List<NodeEntity>>> =
-        combine(nodeDao.observeAll(), edgeDao.observeAll()) { nodes, edges ->
-            val nodeMap = nodes.associateBy { it.id }
-            val incomingPrereqs = edges
-                .filter { it.type == EdgeType.PREREQUISITE }
-                .groupBy { it.toId }
-
-            val active = nodes.filter { it.status == NodeStatus.ACTIVE }
-            val ready = nodes.filter { node ->
-                node.status == NodeStatus.IDEA &&
-                    incomingPrereqs[node.id]?.all { edge ->
-                        nodeMap[edge.fromId]?.status == NodeStatus.DONE
-                    } ?: true
-            }
-            active to ready
+        nodeDao.observeAll().map { nodes ->
+            nodes.filter { it.status == NodeStatus.ACTIVE } to
+                nodes.filter { it.status == NodeStatus.READY }
         }
 
-    suspend fun createNode(title: String): Long =
-        nodeDao.insert(NodeEntity(title = title.trim()))
+    suspend fun createNode(title: String): Long {
+        val id = nodeDao.insert(NodeEntity(title = title.trim()))
+        recalculateReady()
+        return id
+    }
 
     suspend fun updateStatus(node: NodeEntity, status: NodeStatus) {
         val updated = when (status) {
@@ -54,10 +47,41 @@ class NodeRepository @Inject constructor(
             else -> node.copy(status = status)
         }
         nodeDao.update(updated)
+        recalculateReady()
     }
 
-    suspend fun addEdge(fromId: Long, toId: Long) =
+    suspend fun addEdge(fromId: Long, toId: Long) {
         edgeDao.insert(EdgeEntity(fromId = fromId, toId = toId))
+        recalculateReady()
+    }
 
-    suspend fun removeEdge(edge: EdgeEntity) = edgeDao.delete(edge)
+    suspend fun removeEdge(edge: EdgeEntity) {
+        edgeDao.delete(edge)
+        recalculateReady()
+    }
+
+    /**
+     * PREREQUISITE エッジに基づいて IDEA/READY ステータスを再計算する。
+     * - 全前提が DONE の IDEA ノード → READY に昇格
+     * - 前提が未完了の READY ノード → IDEA に降格
+     */
+    private suspend fun recalculateReady() {
+        val nodes = nodeDao.observeAll().first()
+        val edges = edgeDao.observeAll().first()
+        val nodeMap = nodes.associateBy { it.id }
+        val incomingPrereqs = edges
+            .filter { it.type == EdgeType.PREREQUISITE }
+            .groupBy { it.toId }
+
+        nodes.forEach { node ->
+            val prereqs = incomingPrereqs[node.id] ?: emptyList()
+            val allPrereqsDone = prereqs.all { nodeMap[it.fromId]?.status == NodeStatus.DONE }
+            when {
+                node.status == NodeStatus.IDEA && allPrereqsDone ->
+                    nodeDao.update(node.copy(status = NodeStatus.READY))
+                node.status == NodeStatus.READY && !allPrereqsDone ->
+                    nodeDao.update(node.copy(status = NodeStatus.IDEA))
+            }
+        }
+    }
 }
