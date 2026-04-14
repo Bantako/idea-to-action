@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -287,10 +289,25 @@ private fun NodeItemRow(
 ) {
     val isReady = item.node.status == NodeStatus.READY
     val startPadding = if (indented) 32.dp else 16.dp
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                if (isReady) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else Color.Transparent
+            )
+            .drawBehind {
+                if (isReady) {
+                    drawLine(
+                        color = primaryColor,
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = 4.dp.toPx(),
+                    )
+                }
+            }
             .padding(start = startPadding, end = 16.dp, top = 10.dp, bottom = 6.dp),
     ) {
         Row(
