@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import org.mrlem.composesample.data.db.EdgeEntity
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.data.db.ThemeEntity
@@ -76,10 +75,6 @@ fun GraphScreen(
             items(unorganized, key = { "u_${it.node.id}" }) { item ->
                 NodeItemRow(
                     item = item,
-                    themes = state.themes,
-                    onAddPrereq = { viewModel.onAction(GraphAction.ShowAddEdge(item.node)) },
-                    onRemovePrereq = { edge -> viewModel.onAction(GraphAction.RemoveEdge(edge)) },
-                    onAssignTheme = { viewModel.onAction(GraphAction.ShowAssignTheme(item.node)) },
                     onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
@@ -110,10 +105,6 @@ fun GraphScreen(
                     themeItems.forEach { item ->
                         NodeItemRow(
                             item = item,
-                            themes = state.themes,
-                            onAddPrereq = { viewModel.onAction(GraphAction.ShowAddEdge(item.node)) },
-                            onRemovePrereq = { edge -> viewModel.onAction(GraphAction.RemoveEdge(edge)) },
-                            onAssignTheme = { viewModel.onAction(GraphAction.ShowAssignTheme(item.node)) },
                             onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
                             indented = true,
                         )
@@ -190,6 +181,7 @@ fun GraphScreen(
     // ノード編集ダイアログ
     if (state.editTarget != null) {
         val target = state.editTarget!!
+        val targetItem = state.allItems.find { it.node.id == target.id }
         var editTitle by remember(target.id) { mutableStateOf(target.title) }
         var editBody by remember(target.id) { mutableStateOf(target.body) }
         AlertDialog(
@@ -211,6 +203,44 @@ fun GraphScreen(
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
+
+                    // 前提ノード
+                    if (targetItem != null && targetItem.prereqs.isNotEmpty()) {
+                        Text(
+                            text = "前提",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            targetItem.prereqs.forEach { prereq ->
+                                SuggestionChip(
+                                    onClick = { viewModel.onAction(GraphAction.RemoveEdge(prereq.edge)) },
+                                    label = { Text("× ${prereq.fromNode.title}") },
+                                )
+                            }
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                        TextButton(
+                            onClick = {
+                                viewModel.onAction(GraphAction.DismissEdit)
+                                viewModel.onAction(GraphAction.ShowAddEdge(target))
+                            },
+                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+                        ) {
+                            Text("+ 前提を追加", style = MaterialTheme.typography.labelMedium)
+                        }
+                        TextButton(
+                            onClick = {
+                                viewModel.onAction(GraphAction.DismissEdit)
+                                viewModel.onAction(GraphAction.ShowAssignTheme(target))
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        ) {
+                            Text("テーマ変更", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -333,10 +363,6 @@ private fun ThemeSectionHeader(
 @Composable
 private fun NodeItemRow(
     item: NodeItem,
-    themes: List<ThemeEntity>,
-    onAddPrereq: () -> Unit,
-    onRemovePrereq: (EdgeEntity) -> Unit,
-    onAssignTheme: () -> Unit,
     onEdit: () -> Unit,
     indented: Boolean = false,
 ) {
@@ -347,6 +373,7 @@ private fun NodeItemRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onEdit)
             .background(
                 if (isReady) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                 else Color.Transparent
@@ -361,7 +388,7 @@ private fun NodeItemRow(
                     )
                 }
             }
-            .padding(start = startPadding, end = 16.dp, top = 10.dp, bottom = 6.dp),
+            .padding(start = startPadding, end = 16.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -384,17 +411,12 @@ private fun NodeItemRow(
         }
 
         if (item.prereqs.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                item.prereqs.forEach { prereq ->
-                    SuggestionChip(
-                        onClick = { onRemovePrereq(prereq.edge) },
-                        label = { Text("× ${prereq.fromNode.title}") },
-                    )
-                }
-            }
+            Text(
+                text = item.prereqs.joinToString(" → ") { it.fromNode.title },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 2.dp),
+            )
         }
 
         if (item.node.body.isNotBlank()) {
@@ -404,38 +426,6 @@ private fun NodeItemRow(
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(top = 2.dp),
             )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-        ) {
-            TextButton(
-                onClick = onAddPrereq,
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
-            ) {
-                Text(
-                    text = "+ 前提を追加",
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-            TextButton(
-                onClick = onAssignTheme,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-            ) {
-                Text(
-                    text = "テーマ変更",
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-            TextButton(
-                onClick = onEdit,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-            ) {
-                Text(
-                    text = "編集",
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
         }
     }
 }
