@@ -27,8 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.mrlem.composesample.data.db.NodeStatus
 
 @Composable
 fun CaptureScreen(
@@ -72,13 +74,35 @@ fun CaptureScreen(
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             items(state.nodes, key = { it.id }) { node ->
+                val isReady = node.status == NodeStatus.READY
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { viewModel.onAction(CaptureAction.ShowEdit(node)) }
                         .padding(vertical = 12.dp),
                 ) {
-                    Text(text = node.title)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = node.title,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = if (isReady) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (isReady) {
+                            Text(
+                                text = "READY ★",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
+                        }
+                    }
                     if (node.body.isNotBlank()) {
                         Text(
                             text = node.body,
