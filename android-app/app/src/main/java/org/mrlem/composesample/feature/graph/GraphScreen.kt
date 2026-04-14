@@ -223,6 +223,9 @@ fun GraphScreen(
             },
             dismissButton = {
                 Row {
+                    TextButton(onClick = { viewModel.onAction(GraphAction.AbandonNode) }) {
+                        Text("やめる", color = MaterialTheme.colorScheme.error)
+                    }
                     TextButton(onClick = { viewModel.onAction(GraphAction.DeleteNode) }) {
                         Text("削除", color = MaterialTheme.colorScheme.error)
                     }

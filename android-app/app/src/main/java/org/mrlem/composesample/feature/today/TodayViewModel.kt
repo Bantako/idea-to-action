@@ -27,6 +27,7 @@ data class TodayState(
 sealed class TodayAction {
     data class MarkActive(val node: NodeEntity) : TodayAction()
     data class MarkDone(val node: NodeEntity) : TodayAction()
+    data class MarkAbandoned(val node: NodeEntity) : TodayAction()
 }
 
 @HiltViewModel
@@ -65,6 +66,8 @@ class TodayViewModel @Inject constructor(
                         repository.updateStatus(action.node, NodeStatus.ACTIVE)
                     is TodayAction.MarkDone ->
                         repository.updateStatus(action.node, NodeStatus.DONE)
+                    is TodayAction.MarkAbandoned ->
+                        repository.updateStatus(action.node, NodeStatus.ABANDONED)
                 }
             }
         }

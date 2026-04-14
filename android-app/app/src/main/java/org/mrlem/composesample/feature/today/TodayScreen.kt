@@ -59,6 +59,7 @@ fun TodayScreen(
                 ActiveNodeRow(
                     node = node,
                     onDone = { viewModel.onAction(TodayAction.MarkDone(node)) },
+                    onAbandon = { viewModel.onAction(TodayAction.MarkAbandoned(node)) },
                 )
                 HorizontalDivider()
             }
@@ -106,7 +107,7 @@ private fun ThemeGroupHeader(theme: ThemeEntity?) {
 }
 
 @Composable
-private fun ActiveNodeRow(node: NodeEntity, onDone: () -> Unit) {
+private fun ActiveNodeRow(node: NodeEntity, onDone: () -> Unit, onAbandon: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -117,8 +118,13 @@ private fun ActiveNodeRow(node: NodeEntity, onDone: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = node.title, style = MaterialTheme.typography.bodyLarge)
         }
-        Button(onClick = onDone) {
-            Text("完了")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onAbandon) {
+                Text("やめる")
+            }
+            Button(onClick = onDone) {
+                Text("完了")
+            }
         }
     }
 }

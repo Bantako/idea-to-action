@@ -63,6 +63,7 @@ sealed class GraphAction {
     object DismissEdit : GraphAction()
     data class SaveEdit(val title: String, val body: String) : GraphAction()
     object DeleteNode : GraphAction()
+    object AbandonNode : GraphAction()
 }
 
 @HiltViewModel
@@ -86,7 +87,7 @@ class GraphViewModel @Inject constructor(
                     .filter { it.type == EdgeType.PREREQUISITE }
                     .groupBy { it.toId }
 
-                val items = nodes.map { node ->
+                val items = nodes.filter { it.status != NodeStatus.ABANDONED }.map { node ->
                     NodeItem(
                         node = node,
                         prereqs = incomingPrereqsByNode[node.id]
@@ -163,6 +164,11 @@ class GraphViewModel @Inject constructor(
                         val target = _state.value.editTarget ?: return@collect
                         _state.update { it.copy(editTarget = null) }
                         nodeRepository.deleteNode(target)
+                    }
+                    is GraphAction.AbandonNode -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        _state.update { it.copy(editTarget = null) }
+                        nodeRepository.updateStatus(target, NodeStatus.ABANDONED)
                     }
                 }
             }
