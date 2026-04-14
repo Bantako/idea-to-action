@@ -27,4 +27,10 @@ interface NodeDao {
 
     @Delete
     suspend fun delete(node: NodeEntity)
+
+    @Query("UPDATE nodes SET themeId = :themeId WHERE id = :nodeId")
+    suspend fun updateTheme(nodeId: Long, themeId: Long?)
+
+    @Query("UPDATE nodes SET themeId = NULL WHERE themeId = :themeId")
+    suspend fun clearTheme(themeId: Long)
 }

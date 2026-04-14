@@ -8,6 +8,7 @@ data class NodeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val body: String = "",
+    val themeId: Long? = null,
     val status: NodeStatus = NodeStatus.IDEA,
     val createdAt: Long = System.currentTimeMillis(),
     val startedAt: Long? = null,
