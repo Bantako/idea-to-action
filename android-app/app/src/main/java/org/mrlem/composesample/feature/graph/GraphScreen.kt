@@ -80,6 +80,7 @@ fun GraphScreen(
                     onAddPrereq = { viewModel.onAction(GraphAction.ShowAddEdge(item.node)) },
                     onRemovePrereq = { edge -> viewModel.onAction(GraphAction.RemoveEdge(edge)) },
                     onAssignTheme = { viewModel.onAction(GraphAction.ShowAssignTheme(item.node)) },
+                    onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
             }
@@ -113,6 +114,7 @@ fun GraphScreen(
                             onAddPrereq = { viewModel.onAction(GraphAction.ShowAddEdge(item.node)) },
                             onRemovePrereq = { edge -> viewModel.onAction(GraphAction.RemoveEdge(edge)) },
                             onAssignTheme = { viewModel.onAction(GraphAction.ShowAssignTheme(item.node)) },
+                            onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
                             indented = true,
                         )
                         HorizontalDivider(modifier = Modifier.padding(start = 32.dp))
@@ -179,6 +181,48 @@ fun GraphScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(GraphAction.DismissAssignTheme) }) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+
+    // ノード編集ダイアログ
+    if (state.editTarget != null) {
+        val target = state.editTarget!!
+        var editTitle by remember(target.id) { mutableStateOf(target.title) }
+        var editBody by remember(target.id) { mutableStateOf(target.body) }
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(GraphAction.DismissEdit) },
+            title = { Text("ノードを編集") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = editTitle,
+                        onValueChange = { editTitle = it },
+                        label = { Text("タイトル") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editBody,
+                        onValueChange = { editBody = it },
+                        label = { Text("メモ（任意）") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onAction(GraphAction.SaveEdit(editTitle, editBody)) },
+                    enabled = editTitle.isNotBlank(),
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(GraphAction.DismissEdit) }) {
                     Text("キャンセル")
                 }
             },
@@ -285,6 +329,7 @@ private fun NodeItemRow(
     onAddPrereq: () -> Unit,
     onRemovePrereq: (EdgeEntity) -> Unit,
     onAssignTheme: () -> Unit,
+    onEdit: () -> Unit,
     indented: Boolean = false,
 ) {
     val isReady = item.node.status == NodeStatus.READY
@@ -344,6 +389,15 @@ private fun NodeItemRow(
             }
         }
 
+        if (item.node.body.isNotBlank()) {
+            Text(
+                text = item.node.body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+
         Row(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
         ) {
@@ -362,6 +416,15 @@ private fun NodeItemRow(
             ) {
                 Text(
                     text = "テーマ変更",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            TextButton(
+                onClick = onEdit,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            ) {
+                Text(
+                    text = "編集",
                     style = MaterialTheme.typography.labelMedium,
                 )
             }

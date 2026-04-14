@@ -35,6 +35,7 @@ data class GraphState(
     val expandedThemeIds: Set<Long> = emptySet(),
     val addEdgeTarget: NodeEntity? = null,
     val assignThemeTarget: NodeEntity? = null,
+    val editTarget: NodeEntity? = null,
     val showCreateTheme: Boolean = false,
 ) {
     val unorganizedItems: List<NodeItem>
@@ -58,6 +59,9 @@ sealed class GraphAction {
     object ShowCreateTheme : GraphAction()
     object DismissCreateTheme : GraphAction()
     data class CreateTheme(val name: String) : GraphAction()
+    data class ShowEdit(val node: NodeEntity) : GraphAction()
+    object DismissEdit : GraphAction()
+    data class SaveEdit(val title: String, val body: String) : GraphAction()
 }
 
 @HiltViewModel
@@ -140,6 +144,19 @@ class GraphViewModel @Inject constructor(
                             themeRepository.create(action.name)
                         }
                         _state.update { it.copy(showCreateTheme = false) }
+                    }
+                    is GraphAction.ShowEdit -> {
+                        _state.update { it.copy(editTarget = action.node) }
+                    }
+                    is GraphAction.DismissEdit -> {
+                        _state.update { it.copy(editTarget = null) }
+                    }
+                    is GraphAction.SaveEdit -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        if (action.title.isNotBlank()) {
+                            nodeRepository.updateNode(target, action.title, action.body)
+                        }
+                        _state.update { it.copy(editTarget = null) }
                     }
                 }
             }

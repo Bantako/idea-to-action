@@ -1,5 +1,6 @@
 package org.mrlem.composesample.feature.capture
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,14 +12,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -66,12 +72,21 @@ fun CaptureScreen(
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             items(state.nodes, key = { it.id }) { node ->
-                Text(
-                    text = node.title,
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { viewModel.onAction(CaptureAction.ShowEdit(node)) }
                         .padding(vertical = 12.dp),
-                )
+                ) {
+                    Text(text = node.title)
+                    if (node.body.isNotBlank()) {
+                        Text(
+                            text = node.body,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                }
                 HorizontalDivider()
             }
 
@@ -97,4 +112,57 @@ fun CaptureScreen(
             }
         }
     }
+
+    val editTarget = state.editTarget
+    if (editTarget != null) {
+        NodeEditDialog(
+            node = editTarget,
+            onDismiss = { viewModel.onAction(CaptureAction.DismissEdit) },
+            onSave = { title, body -> viewModel.onAction(CaptureAction.SaveEdit(title, body)) },
+        )
+    }
+}
+
+@Composable
+private fun NodeEditDialog(
+    node: org.mrlem.composesample.data.db.NodeEntity,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit,
+) {
+    var title by remember { mutableStateOf(node.title) }
+    var body by remember { mutableStateOf(node.body) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ノードを編集") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("タイトル") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it },
+                    label = { Text("メモ（任意）") },
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(title, body) },
+                enabled = title.isNotBlank(),
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("キャンセル") }
+        },
+    )
 }

@@ -23,11 +23,15 @@ data class CaptureState(
     val input: String = "",
     val nodes: List<NodeEntity> = emptyList(),
     val aiLog: List<AiActivityEntry> = emptyList(),
+    val editTarget: NodeEntity? = null,
 )
 
 sealed class CaptureAction {
     data class InputChanged(val text: String) : CaptureAction()
     object Submit : CaptureAction()
+    data class ShowEdit(val node: NodeEntity) : CaptureAction()
+    object DismissEdit : CaptureAction()
+    data class SaveEdit(val title: String, val body: String) : CaptureAction()
 }
 
 @HiltViewModel
@@ -50,6 +54,15 @@ class CaptureViewModel @Inject constructor(
                 when (action) {
                     is CaptureAction.InputChanged -> _state.update { it.copy(input = action.text) }
                     is CaptureAction.Submit -> handleSubmit()
+                    is CaptureAction.ShowEdit -> _state.update { it.copy(editTarget = action.node) }
+                    is CaptureAction.DismissEdit -> _state.update { it.copy(editTarget = null) }
+                    is CaptureAction.SaveEdit -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        if (action.title.isNotBlank()) {
+                            repository.updateNode(target, action.title, action.body)
+                        }
+                        _state.update { it.copy(editTarget = null) }
+                    }
                 }
             }
         }
