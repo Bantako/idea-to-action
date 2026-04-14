@@ -41,6 +41,11 @@ class NodeRepository @Inject constructor(
         nodeDao.update(node.copy(title = title.trim(), body = body.trim()))
     }
 
+    suspend fun deleteNode(node: NodeEntity) {
+        nodeDao.delete(node)
+        recalculateReady()
+    }
+
     suspend fun createNode(title: String): Long {
         val id = nodeDao.insert(NodeEntity(title = title.trim()))
         recalculateReady()

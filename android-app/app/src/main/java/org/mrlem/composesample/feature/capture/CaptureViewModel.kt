@@ -31,6 +31,7 @@ sealed class CaptureAction {
     data class ShowEdit(val node: NodeEntity) : CaptureAction()
     object DismissEdit : CaptureAction()
     data class SaveEdit(val title: String, val body: String) : CaptureAction()
+    object DeleteNode : CaptureAction()
 }
 
 @HiltViewModel
@@ -61,6 +62,11 @@ class CaptureViewModel @Inject constructor(
                             repository.updateNode(target, action.title, action.body)
                         }
                         _state.update { it.copy(editTarget = null) }
+                    }
+                    is CaptureAction.DeleteNode -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        _state.update { it.copy(editTarget = null) }
+                        repository.deleteNode(target)
                     }
                 }
             }

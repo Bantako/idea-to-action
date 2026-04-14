@@ -119,6 +119,7 @@ fun CaptureScreen(
             node = editTarget,
             onDismiss = { viewModel.onAction(CaptureAction.DismissEdit) },
             onSave = { title, body -> viewModel.onAction(CaptureAction.SaveEdit(title, body)) },
+            onDelete = { viewModel.onAction(CaptureAction.DeleteNode) },
         )
     }
 }
@@ -128,6 +129,7 @@ private fun NodeEditDialog(
     node: org.mrlem.composesample.data.db.NodeEntity,
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit,
+    onDelete: () -> Unit,
 ) {
     var title by remember { mutableStateOf(node.title) }
     var body by remember { mutableStateOf(node.body) }
@@ -162,7 +164,12 @@ private fun NodeEditDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("キャンセル") }
+            Row {
+                TextButton(onClick = onDelete) {
+                    Text("削除", color = MaterialTheme.colorScheme.error)
+                }
+                TextButton(onClick = onDismiss) { Text("キャンセル") }
+            }
         },
     )
 }

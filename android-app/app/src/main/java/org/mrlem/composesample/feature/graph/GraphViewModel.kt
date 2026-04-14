@@ -62,6 +62,7 @@ sealed class GraphAction {
     data class ShowEdit(val node: NodeEntity) : GraphAction()
     object DismissEdit : GraphAction()
     data class SaveEdit(val title: String, val body: String) : GraphAction()
+    object DeleteNode : GraphAction()
 }
 
 @HiltViewModel
@@ -157,6 +158,11 @@ class GraphViewModel @Inject constructor(
                             nodeRepository.updateNode(target, action.title, action.body)
                         }
                         _state.update { it.copy(editTarget = null) }
+                    }
+                    is GraphAction.DeleteNode -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        _state.update { it.copy(editTarget = null) }
+                        nodeRepository.deleteNode(target)
                     }
                 }
             }

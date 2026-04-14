@@ -222,8 +222,13 @@ fun GraphScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onAction(GraphAction.DismissEdit) }) {
-                    Text("キャンセル")
+                Row {
+                    TextButton(onClick = { viewModel.onAction(GraphAction.DeleteNode) }) {
+                        Text("削除", color = MaterialTheme.colorScheme.error)
+                    }
+                    TextButton(onClick = { viewModel.onAction(GraphAction.DismissEdit) }) {
+                        Text("キャンセル")
+                    }
                 }
             },
         )
