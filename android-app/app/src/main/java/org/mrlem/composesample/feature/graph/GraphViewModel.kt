@@ -13,7 +13,9 @@ import org.mrlem.composesample.data.db.EdgeEntity
 import org.mrlem.composesample.data.db.EdgeType
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
+import org.mrlem.composesample.data.db.ThemeEntity
 import org.mrlem.composesample.domain.NodeRepository
+import org.mrlem.composesample.domain.ThemeRepository
 import javax.inject.Inject
 
 data class Prereq(
@@ -27,27 +29,41 @@ data class NodeItem(
 )
 
 data class GraphState(
+    val themes: List<ThemeEntity> = emptyList(),
     val allItems: List<NodeItem> = emptyList(),
     val allNodes: List<NodeEntity> = emptyList(),
-    val statusFilter: NodeStatus? = null,
-    val addEdgeTarget: NodeEntity? = null,  // ノード: 前提条件を追加する対象
+    val expandedThemeIds: Set<Long> = emptySet(),
+    val addEdgeTarget: NodeEntity? = null,
+    val assignThemeTarget: NodeEntity? = null,
+    val showCreateTheme: Boolean = false,
 ) {
-    val displayItems: List<NodeItem>
-        get() = if (statusFilter == null) allItems
-                else allItems.filter { it.node.status == statusFilter }
+    val unorganizedItems: List<NodeItem>
+        get() = allItems.filter { it.node.themeId == null }
+
+    fun itemsForTheme(themeId: Long): List<NodeItem> =
+        allItems.filter { it.node.themeId == themeId }
+
+    fun isThemeExpanded(themeId: Long): Boolean = themeId in expandedThemeIds
 }
 
 sealed class GraphAction {
-    data class FilterChanged(val status: NodeStatus?) : GraphAction()
     data class ShowAddEdge(val node: NodeEntity) : GraphAction()
     object DismissAddEdge : GraphAction()
     data class AddEdge(val fromId: Long) : GraphAction()
     data class RemoveEdge(val edge: EdgeEntity) : GraphAction()
+    data class ToggleTheme(val themeId: Long) : GraphAction()
+    data class ShowAssignTheme(val node: NodeEntity) : GraphAction()
+    object DismissAssignTheme : GraphAction()
+    data class AssignTheme(val themeId: Long?) : GraphAction()
+    object ShowCreateTheme : GraphAction()
+    object DismissCreateTheme : GraphAction()
+    data class CreateTheme(val name: String) : GraphAction()
 }
 
 @HiltViewModel
 class GraphViewModel @Inject constructor(
-    private val repository: NodeRepository,
+    private val nodeRepository: NodeRepository,
+    private val themeRepository: ThemeRepository,
 ) : UnidirectionalViewModel<GraphState, GraphAction, Unit>() {
 
     private val _state = MutableStateFlow(GraphState())
@@ -56,9 +72,10 @@ class GraphViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             combine(
-                repository.observeAll(),
-                repository.observeEdges(),
-            ) { nodes, edges ->
+                nodeRepository.observeAll(),
+                nodeRepository.observeEdges(),
+                themeRepository.observeAll(),
+            ) { nodes, edges, themes ->
                 val nodeMap = nodes.associateBy { it.id }
                 val incomingPrereqsByNode = edges
                     .filter { it.type == EdgeType.PREREQUISITE }
@@ -72,17 +89,14 @@ class GraphViewModel @Inject constructor(
                             ?: emptyList(),
                     )
                 }
-                nodes to items
-            }.collect { (allNodes, allItems) ->
-                _state.update { it.copy(allNodes = allNodes, allItems = allItems) }
+                Triple(nodes, items, themes)
+            }.collect { (allNodes, allItems, themes) ->
+                _state.update { it.copy(allNodes = allNodes, allItems = allItems, themes = themes) }
             }
         }
         viewModelScope.launch {
             actions.collect { action ->
                 when (action) {
-                    is GraphAction.FilterChanged -> {
-                        _state.update { it.copy(statusFilter = action.status) }
-                    }
                     is GraphAction.ShowAddEdge -> {
                         _state.update { it.copy(addEdgeTarget = action.node) }
                     }
@@ -91,11 +105,41 @@ class GraphViewModel @Inject constructor(
                     }
                     is GraphAction.AddEdge -> {
                         val target = _state.value.addEdgeTarget ?: return@collect
-                        repository.addEdge(fromId = action.fromId, toId = target.id)
+                        nodeRepository.addEdge(fromId = action.fromId, toId = target.id)
                         _state.update { it.copy(addEdgeTarget = null) }
                     }
                     is GraphAction.RemoveEdge -> {
-                        repository.removeEdge(action.edge)
+                        nodeRepository.removeEdge(action.edge)
+                    }
+                    is GraphAction.ToggleTheme -> {
+                        _state.update { s ->
+                            val ids = s.expandedThemeIds.toMutableSet()
+                            if (action.themeId in ids) ids.remove(action.themeId) else ids.add(action.themeId)
+                            s.copy(expandedThemeIds = ids)
+                        }
+                    }
+                    is GraphAction.ShowAssignTheme -> {
+                        _state.update { it.copy(assignThemeTarget = action.node) }
+                    }
+                    is GraphAction.DismissAssignTheme -> {
+                        _state.update { it.copy(assignThemeTarget = null) }
+                    }
+                    is GraphAction.AssignTheme -> {
+                        val target = _state.value.assignThemeTarget ?: return@collect
+                        themeRepository.assignNode(target.id, action.themeId)
+                        _state.update { it.copy(assignThemeTarget = null) }
+                    }
+                    is GraphAction.ShowCreateTheme -> {
+                        _state.update { it.copy(showCreateTheme = true) }
+                    }
+                    is GraphAction.DismissCreateTheme -> {
+                        _state.update { it.copy(showCreateTheme = false) }
+                    }
+                    is GraphAction.CreateTheme -> {
+                        if (action.name.isNotBlank()) {
+                            themeRepository.create(action.name)
+                        }
+                        _state.update { it.copy(showCreateTheme = false) }
                     }
                 }
             }
