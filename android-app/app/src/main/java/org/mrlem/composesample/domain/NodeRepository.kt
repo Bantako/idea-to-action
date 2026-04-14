@@ -23,6 +23,9 @@ class NodeRepository @Inject constructor(
     fun observeByStatus(status: NodeStatus): Flow<List<NodeEntity>> =
         nodeDao.observeByStatus(status)
 
+    /** theme_id = null かつ IDEA/READY のノード（Capture タブ用） */
+    fun observeUnorganized(): Flow<List<NodeEntity>> = nodeDao.observeUnorganized()
+
     fun observeEdges(): Flow<List<EdgeEntity>> = edgeDao.observeAll()
 
     /**

@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import org.mrlem.android.core.feature.ui.UnidirectionalViewModel
 import org.mrlem.composesample.data.ai.AiService
 import org.mrlem.composesample.data.db.NodeEntity
-import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.domain.NodeRepository
 import javax.inject.Inject
 
@@ -45,7 +44,7 @@ class CaptureViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.observeByStatus(NodeStatus.IDEA).collect { nodes ->
+            repository.observeUnorganized().collect { nodes ->
                 _state.update { it.copy(nodes = nodes) }
             }
         }

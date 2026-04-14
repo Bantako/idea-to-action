@@ -16,6 +16,9 @@ interface NodeDao {
     @Query("SELECT * FROM nodes WHERE status = :status ORDER BY createdAt DESC")
     fun observeByStatus(status: NodeStatus): Flow<List<NodeEntity>>
 
+    @Query("SELECT * FROM nodes WHERE themeId IS NULL AND status IN ('IDEA', 'READY') ORDER BY createdAt DESC")
+    fun observeUnorganized(): Flow<List<NodeEntity>>
+
     @Query("SELECT * FROM nodes WHERE id = :id")
     suspend fun getById(id: Long): NodeEntity?
 
