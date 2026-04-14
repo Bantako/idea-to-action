@@ -5,18 +5,22 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mrlem.android.core.feature.ui.UnidirectionalViewModel
 import org.mrlem.composesample.data.ai.AiService
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
+import org.mrlem.composesample.data.db.ThemeEntity
 import org.mrlem.composesample.domain.NodeRepository
+import org.mrlem.composesample.domain.ThemeRepository
 import javax.inject.Inject
 
 data class TodayState(
     val activeNodes: List<NodeEntity> = emptyList(),
-    val readyNodes: List<NodeEntity> = emptyList(),
+    // null キーは未整理（theme_id = null）グループ
+    val readyByTheme: List<Pair<ThemeEntity?, List<NodeEntity>>> = emptyList(),
     val aiRanked: Boolean = false,
 )
 
@@ -28,6 +32,7 @@ sealed class TodayAction {
 @HiltViewModel
 class TodayViewModel @Inject constructor(
     private val repository: NodeRepository,
+    private val themeRepository: ThemeRepository,
     private val aiService: AiService,
 ) : UnidirectionalViewModel<TodayState, TodayAction, Unit>() {
 
@@ -36,11 +41,20 @@ class TodayViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.observeActionable().collect { (active, ready) ->
-                _state.update { it.copy(activeNodes = active, readyNodes = ready, aiRanked = false) }
+            combine(
+                repository.observeActionable(),
+                themeRepository.observeAll(),
+            ) { (active, ready), themes ->
+                active to Pair(ready, themes)
+            }.collect { (active, readyAndThemes) ->
+                val (ready, themes) = readyAndThemes
+                val grouped = groupByTheme(ready, themes)
+                _state.update { it.copy(activeNodes = active, readyByTheme = grouped, aiRanked = false) }
+
                 if (aiService.isAvailable && ready.size > 1) {
                     val ranked = aiService.rankReadyNodes(ready)
-                    _state.update { it.copy(readyNodes = ranked, aiRanked = true) }
+                    val rankedGrouped = groupByTheme(ranked, themes)
+                    _state.update { it.copy(readyByTheme = rankedGrouped, aiRanked = true) }
                 }
             }
         }
@@ -53,6 +67,23 @@ class TodayViewModel @Inject constructor(
                         repository.updateStatus(action.node, NodeStatus.DONE)
                 }
             }
+        }
+    }
+
+    private fun groupByTheme(
+        nodes: List<NodeEntity>,
+        themes: List<ThemeEntity>,
+    ): List<Pair<ThemeEntity?, List<NodeEntity>>> {
+        val grouped = nodes.groupBy { it.themeId }
+        return buildList {
+            // テーマ定義順にグループを追加
+            themes.forEach { theme ->
+                val themedNodes = grouped[theme.id]
+                if (!themedNodes.isNullOrEmpty()) add(theme to themedNodes)
+            }
+            // 未整理ノードを末尾に追加
+            val unthemed = grouped[null]
+            if (!unthemed.isNullOrEmpty()) add(null to unthemed)
         }
     }
 }

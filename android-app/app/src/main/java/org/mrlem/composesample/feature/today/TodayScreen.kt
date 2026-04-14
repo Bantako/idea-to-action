@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import org.mrlem.composesample.data.db.NodeEntity
+import org.mrlem.composesample.data.db.ThemeEntity
 
 @Composable
 fun TodayScreen(
@@ -29,7 +30,7 @@ fun TodayScreen(
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val isEmpty = state.activeNodes.isEmpty() && state.readyNodes.isEmpty()
+    val isEmpty = state.activeNodes.isEmpty() && state.readyByTheme.isEmpty()
 
     LazyColumn(
         modifier = Modifier
@@ -63,17 +64,22 @@ fun TodayScreen(
             }
         }
 
-        if (state.readyNodes.isNotEmpty()) {
+        if (state.readyByTheme.isNotEmpty()) {
             item {
                 val label = if (state.aiRanked) "着手できます（AI おすすめ順）" else "着手できます"
                 SectionHeader(label)
             }
-            items(state.readyNodes, key = { it.id }) { node ->
-                ReadyNodeRow(
-                    node = node,
-                    onStart = { viewModel.onAction(TodayAction.MarkActive(node)) },
-                )
-                HorizontalDivider()
+            state.readyByTheme.forEach { (theme, nodes) ->
+                item(key = "theme_${theme?.id ?: "none"}") {
+                    ThemeGroupHeader(theme)
+                }
+                items(nodes, key = { it.id }) { node ->
+                    ReadyNodeRow(
+                        node = node,
+                        onStart = { viewModel.onAction(TodayAction.MarkActive(node)) },
+                    )
+                    HorizontalDivider()
+                }
             }
         }
     }
@@ -86,6 +92,16 @@ private fun SectionHeader(title: String) {
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun ThemeGroupHeader(theme: ThemeEntity?) {
+    Text(
+        text = theme?.name ?: "未整理",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.outline,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
     )
 }
 
