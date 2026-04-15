@@ -5,6 +5,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mrlem.android.core.feature.ui.UnidirectionalViewModel
@@ -45,8 +47,14 @@ class CaptureViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.observeUnorganized().collect { nodes ->
-                _state.update { it.copy(nodes = nodes) }
+            combine(
+                repository.observeUnorganized(),
+                repository.observeEdges(),
+            ) { nodes, edges ->
+                val connectedIds = edges.flatMap { listOf(it.fromId, it.toId) }.toSet()
+                nodes.filter { it.id !in connectedIds }
+            }.collect { unconnected ->
+                _state.update { it.copy(nodes = unconnected) }
             }
         }
         viewModelScope.launch {
@@ -77,7 +85,7 @@ class CaptureViewModel @Inject constructor(
         val title = _state.value.input.trim()
         if (title.isEmpty()) return
 
-        val existingNodes = _state.value.nodes
+        val existingNodes = repository.observeAll().first()
         val newNodeId = repository.createNode(title)
         _state.update { it.copy(input = "") }
 
