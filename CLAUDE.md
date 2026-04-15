@@ -77,14 +77,42 @@ Capture | Graph | Today
 ```
 
 - **Capture**: テキスト投入フォーム + 未接続ノード一覧。AIが関係候補を提案
-- **Graph**: DAGを階層リストで表示。エッジ追加・削除。状態/期間フィルタで振り返りも兼ねる
-- **Today**: READYなノード一覧。着手・完了マーク。AIによる優先提案
+- **Graph**: 整理セッション向けUI。未整理ノードをテーマに割り当て、エッジを張って構造化する。雑多なアイデアがステップに変わる感覚を提供する
+- **Today**: READYなノード一覧（テーマ別グルーピング）。着手・完了マーク。AIによる優先提案
+
+### Graph タブの設計
+
+整理セッション（溜まったノードを一気に捌く）がメインユースケース。
+
+```
+[未整理ゾーン]         [テーマ別ゾーン]
+  ─ LP作る              ▶ 副業
+  ─ 競合調査する            ├ サービス方向を決める [IDEA]
+  ─ 健康診断予約            └ 競合調査する [READY ★]
+  ─ 筋トレルーティン        ▶ 健康
+  ...                       ─ (空)
+```
+
+操作:
+- ノードをテーマに割り当て（ドラッグ or ボタン）
+- テーマをその場で新規作成
+- ノード同士のエッジ追加（PREREQUISITE でREADYが生まれる）
+- ノードの統合（EVOLVED_FROM）
+- AIによるグルーピング提案
+
+整理後の感覚: 「全体が見える・雑多なイメージがステップになる」
 
 ### データモデル
 
 ```
+Theme {
+  id, name, color
+  created_at
+}
+
 Node {
   id, title, body
+  theme_id (nullable)
   status: IDEA | READY | ACTIVE | DONE | ABANDONED
   created_at, started_at, done_at
 }
@@ -95,7 +123,9 @@ Edge {
 }
 ```
 
-`READY` = incoming edges の全 from_node が DONE のノード
+`READY` = incoming PREREQUISITE edges の全 from_node が DONE のノード（theme_idは無関係）
+
+テーマはグルーピングのための入れ物。ノードの依存関係（READY判定）はエッジのみで決まる。
 
 ### AI機能の優先順位
 
@@ -106,6 +136,13 @@ Edge {
 | 中 | Graph整理時 | 孤立ノードや関係の薄いノードをグルーピング提案 |
 
 APIキー未設定時はAI機能をすべてスキップし、手動フローで動く。
+
+### 将来検討（現時点では未実装）
+
+- **やらなくちゃいけないこと（タスク）の分離フロー**
+  - やりたいことは発散しがちでGraph整理が必要。やらなくちゃいけないことは目的・フローが明確なので整理不要
+  - 将来的には `mode: WANT | TASK` で分け、TASKはCapture→Todayに直行、Graphには現れない設計が考えられる
+  - 現時点では `due_date` で期限管理するだけで十分
 
 ### やらないこと（明示的に封印）
 
@@ -119,30 +156,37 @@ APIキー未設定時はAI機能をすべてスキップし、手動フローで
 
 ## 現在の実装状態
 
-### 実装済み
+### 実装済み（2026-04-14 時点）
 
-2026-04-11 に設計を全面刷新。旧実装（Inbox/Theme/Step/ScheduledStep/CoachingMessage）は削除予定。
+- Step 1: クリーンアップ完了
+- Step 2: Node + Edge の Room DB 実装完了
+- Step 3: Capture / Graph / Today の3タブ画面実装完了
+- Step 4: Capture時のAI関係提案・Today時のAI優先提案 実装完了
 
-- なし（リセット中）
+### 未実装（次のステップ）
+
+- Step 5: Theme エンティティ追加（DB + ViewModel）
+- Step 6: Graph タブ再設計（整理セッションUI・2ペイン・READY強調）
+- Step 7: Today タブをテーマ軸でグルーピング表示
 
 ## 直近の目標
 
 依存関係を考慮して上から順に対応する。
 
-### Step 1: クリーンアップ
-1. 既存実装（旧DB・画面・ViewModel）をすべて削除する
+### Step 5: Theme 基盤
+1. Theme エンティティを Room DB に追加
+2. Node に theme_id (nullable) を追加
+3. Theme の CRUD ViewModel
 
-### Step 2: 基盤
-2. 新データモデル実装（Node + Edge の Room DB）
+### Step 6: Graph タブ再設計
+4. 未整理ゾーン（theme_id = null のノード一覧）
+5. テーマ別ゾーン（テーマごとに折りたたみ）
+6. ノードをテーマに割り当てるUI
+7. テーマ新規作成UI
+8. READY ノードの視覚的強調
 
-### Step 3: 画面実装
-3. Captureタブ（テキスト入力 → ノード作成 + 一覧）
-4. Graphタブ（DAG階層リスト + エッジ追加 + 状態フィルタ）
-5. Todayタブ（READYノード一覧 + 着手・完了マーク）
-
-### Step 4: AI統合
-6. Capture時の関係提案（既存ノードとの類似・エッジ候補）
-7. Today時の優先提案
+### Step 7: Today タブ更新
+9. READYノードをテーマ別にグルーピング表示
 
 ## スコープ制約
 
