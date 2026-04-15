@@ -104,6 +104,27 @@ fun GraphScreen(
                 )
             }
         }
+
+        // 対応しないゾーン（折りたたみ）
+        val deferred = state.deferredItems
+        if (deferred.isNotEmpty()) {
+            item(key = "deferred_header") {
+                DeferredSectionHeader(
+                    count = deferred.size,
+                    expanded = state.showDeferred,
+                    onToggle = { viewModel.onAction(GraphAction.ToggleDeferred) },
+                )
+            }
+            if (state.showDeferred) {
+                items(deferred, key = { "d_${it.node.id}" }) { item ->
+                    DeferredNodeRow(
+                        item = item,
+                        onRestore = { viewModel.onAction(GraphAction.RestoreNode(item.node)) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                }
+            }
+        }
     }
 
     // 選択モードのボトムバー
@@ -314,6 +335,9 @@ fun GraphScreen(
             },
             dismissButton = {
                 Row {
+                    TextButton(onClick = { viewModel.onAction(GraphAction.DeferNode) }) {
+                        Text("今は対応しない", color = MaterialTheme.colorScheme.secondary)
+                    }
                     TextButton(onClick = { viewModel.onAction(GraphAction.AbandonNode) }) {
                         Text("やめる", color = MaterialTheme.colorScheme.error)
                     }
@@ -418,6 +442,47 @@ private fun SectionHeader(title: String) {
     )
 }
 
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DeferredSectionHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = onToggle)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "${if (expanded) "▼" else "▶"} 今は対応しない（$count）",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+@Composable
+private fun DeferredNodeRow(item: NodeItem, onRestore: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = item.node.title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        TextButton(onClick = onRestore) {
+            Text("復活", style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

@@ -33,8 +33,10 @@ data class NodeItem(
 data class GraphState(
     val themes: List<ThemeEntity> = emptyList(),
     val allItems: List<NodeItem> = emptyList(),
+    val deferredItems: List<NodeItem> = emptyList(),
     val allNodes: List<NodeEntity> = emptyList(),
     val selectedNodeIds: Set<Long> = emptySet(),
+    val showDeferred: Boolean = false,
     val showBulkAssign: Boolean = false,
     val addEdgeTarget: NodeEntity? = null,
     val addEdgeType: EdgeType = EdgeType.PREREQUISITE,
@@ -75,6 +77,9 @@ sealed class GraphAction {
     data class SaveEdit(val title: String, val body: String) : GraphAction()
     object DeleteNode : GraphAction()
     object AbandonNode : GraphAction()
+    object DeferNode : GraphAction()
+    data class RestoreNode(val node: NodeEntity) : GraphAction()
+    object ToggleDeferred : GraphAction()
 }
 
 @HiltViewModel
@@ -107,19 +112,28 @@ class GraphViewModel @Inject constructor(
                 }
 
                 val connectedIds = edges.flatMap { listOf(it.fromId, it.toId) }.toSet()
-                val items = nodes.filter { it.status != NodeStatus.ABANDONED }.map { node ->
-                    NodeItem(
-                        node = node,
-                        prereqs = incomingPrereqsByNode[node.id]
-                            ?.mapNotNull { edge -> nodeMap[edge.fromId]?.let { Prereq(edge, it) } }
-                            ?: emptyList(),
-                        relatedNodes = relatedNodesByNode[node.id] ?: emptyList(),
-                        isConnected = node.id in connectedIds,
-                    )
-                }
-                Triple(nodes, items, themes)
-            }.collect { (allNodes, allItems, themes) ->
-                _state.update { it.copy(allNodes = allNodes, allItems = allItems, themes = themes) }
+                val activeStatuses = setOf(NodeStatus.IDEA, NodeStatus.READY, NodeStatus.ACTIVE, NodeStatus.DONE)
+                val allItems = nodes
+                    .filter { it.status in activeStatuses }
+                    .map { node ->
+                        NodeItem(
+                            node = node,
+                            prereqs = incomingPrereqsByNode[node.id]
+                                ?.mapNotNull { edge -> nodeMap[edge.fromId]?.let { Prereq(edge, it) } }
+                                ?: emptyList(),
+                            relatedNodes = relatedNodesByNode[node.id] ?: emptyList(),
+                            isConnected = node.id in connectedIds,
+                        )
+                    }
+                val deferredItems = nodes
+                    .filter { it.status == NodeStatus.DEFERRED }
+                    .map { node ->
+                        NodeItem(node = node, prereqs = emptyList(), relatedNodes = emptyList())
+                    }
+                Triple(nodes, Pair(allItems, deferredItems), themes)
+            }.collect { (allNodes, items, themes) ->
+                val (allItems, deferredItems) = items
+                _state.update { it.copy(allNodes = allNodes, allItems = allItems, deferredItems = deferredItems, themes = themes) }
             }
         }
         viewModelScope.launch {
@@ -224,6 +238,17 @@ class GraphViewModel @Inject constructor(
                         val target = _state.value.editTarget ?: return@collect
                         _state.update { it.copy(editTarget = null) }
                         nodeRepository.updateStatus(target, NodeStatus.ABANDONED)
+                    }
+                    is GraphAction.DeferNode -> {
+                        val target = _state.value.editTarget ?: return@collect
+                        _state.update { it.copy(editTarget = null) }
+                        nodeRepository.updateStatus(target, NodeStatus.DEFERRED)
+                    }
+                    is GraphAction.RestoreNode -> {
+                        nodeRepository.updateStatus(action.node, NodeStatus.IDEA)
+                    }
+                    is GraphAction.ToggleDeferred -> {
+                        _state.update { it.copy(showDeferred = !it.showDeferred) }
                     }
                 }
             }
