@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,25 +56,16 @@ fun GraphScreen(
             .padding(contentPadding),
         contentPadding = PaddingValues(bottom = 16.dp),
     ) {
-        // 未整理ゾーン
-        item(key = "unorganized_header") {
-            SectionHeader(title = "未整理")
-        }
-
-        val unorganized = state.unorganizedItems
-        if (unorganized.isEmpty()) {
-            item(key = "unorganized_empty") {
-                Text(
-                    text = "未整理のノードはありません",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
+        // 接続ありゾーン
+        val connected = state.connectedItems
+        if (connected.isNotEmpty()) {
+            item(key = "connected_header") {
+                SectionHeader(title = "接続あり")
             }
-        } else {
-            items(unorganized, key = { "u_${it.node.id}" }) { item ->
+            items(connected, key = { "c_${it.node.id}" }) { item ->
                 NodeItemRow(
                     item = item,
+                    theme = state.themeFor(item.node.themeId),
                     isSelected = item.node.id in state.selectedNodeIds,
                     isSelectMode = state.isSelectMode,
                     onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
@@ -85,40 +75,33 @@ fun GraphScreen(
             }
         }
 
-        // テーマ別ゾーン
-        items(state.themes, key = { "theme_${it.id}" }) { theme ->
-            val expanded = state.isThemeExpanded(theme.id)
-            val themeItems = state.itemsForTheme(theme.id)
+        // 接続なしゾーン
+        val unconnected = state.unconnectedItems
+        if (unconnected.isNotEmpty()) {
+            item(key = "unconnected_header") {
+                SectionHeader(title = "接続なし")
+            }
+            items(unconnected, key = { "u_${it.node.id}" }) { item ->
+                NodeItemRow(
+                    item = item,
+                    theme = state.themeFor(item.node.themeId),
+                    isSelected = item.node.id in state.selectedNodeIds,
+                    isSelectMode = state.isSelectMode,
+                    onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
+                    onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+            }
+        }
 
-            ThemeSectionHeader(
-                theme = theme,
-                count = themeItems.size,
-                expanded = expanded,
-                onToggle = { viewModel.onAction(GraphAction.ToggleTheme(theme.id)) },
-                onLongPress = { viewModel.onAction(GraphAction.ShowDeleteTheme(theme)) },
-            )
-
-            if (expanded) {
-                if (themeItems.isEmpty()) {
-                    Text(
-                        text = "ノードなし",
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                } else {
-                    themeItems.forEach { item ->
-                        NodeItemRow(
-                            item = item,
-                            isSelected = item.node.id in state.selectedNodeIds,
-                            isSelectMode = state.isSelectMode,
-                            onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
-                            onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
-                            indented = true,
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(start = 32.dp))
-                    }
-                }
+        if (connected.isEmpty() && unconnected.isEmpty()) {
+            item(key = "empty") {
+                Text(
+                    text = "ノードがありません",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
     }
@@ -435,60 +418,19 @@ private fun SectionHeader(title: String) {
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ThemeSectionHeader(
-    theme: ThemeEntity,
-    count: Int,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    onLongPress: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onToggle, onLongClick = onLongPress)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = if (expanded) "▼" else "▶",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = theme.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Text(
-            text = "$count",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-        )
-    }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NodeItemRow(
     item: NodeItem,
+    theme: ThemeEntity? = null,
     isSelected: Boolean = false,
     isSelectMode: Boolean = false,
     onEdit: () -> Unit,
     onLongPress: () -> Unit = {},
-    indented: Boolean = false,
 ) {
     val isReady = item.node.status == NodeStatus.READY
-    val startPadding = if (indented) 32.dp else 16.dp
+    val startPadding = 16.dp
     val primaryColor = MaterialTheme.colorScheme.primary
     val selectedColor = MaterialTheme.colorScheme.tertiary
 
@@ -541,6 +483,15 @@ private fun NodeItemRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                 fontWeight = if (isReady) FontWeight.Bold else FontWeight.Normal,
+            )
+        }
+
+        if (theme != null) {
+            Text(
+                text = "# ${theme.name}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
 

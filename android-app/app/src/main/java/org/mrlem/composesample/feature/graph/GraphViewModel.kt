@@ -27,13 +27,13 @@ data class NodeItem(
     val node: NodeEntity,
     val prereqs: List<Prereq>,
     val relatedNodes: List<NodeEntity> = emptyList(),
+    val isConnected: Boolean = false,
 )
 
 data class GraphState(
     val themes: List<ThemeEntity> = emptyList(),
     val allItems: List<NodeItem> = emptyList(),
     val allNodes: List<NodeEntity> = emptyList(),
-    val expandedThemeIds: Set<Long> = emptySet(),
     val selectedNodeIds: Set<Long> = emptySet(),
     val showBulkAssign: Boolean = false,
     val addEdgeTarget: NodeEntity? = null,
@@ -44,13 +44,10 @@ data class GraphState(
     val showCreateTheme: Boolean = false,
 ) {
     val isSelectMode: Boolean get() = selectedNodeIds.isNotEmpty()
-    val unorganizedItems: List<NodeItem>
-        get() = allItems.filter { it.node.themeId == null }
+    val connectedItems: List<NodeItem> get() = allItems.filter { it.isConnected }
+    val unconnectedItems: List<NodeItem> get() = allItems.filter { !it.isConnected }
 
-    fun itemsForTheme(themeId: Long): List<NodeItem> =
-        allItems.filter { it.node.themeId == themeId }
-
-    fun isThemeExpanded(themeId: Long): Boolean = themeId in expandedThemeIds
+    fun themeFor(themeId: Long?): ThemeEntity? = themes.find { it.id == themeId }
 }
 
 sealed class GraphAction {
@@ -59,7 +56,6 @@ sealed class GraphAction {
     data class SelectEdgeType(val type: EdgeType) : GraphAction()
     data class AddEdge(val fromId: Long) : GraphAction()
     data class RemoveEdge(val edge: EdgeEntity) : GraphAction()
-    data class ToggleTheme(val themeId: Long) : GraphAction()
     data class ShowAssignTheme(val node: NodeEntity) : GraphAction()
     object DismissAssignTheme : GraphAction()
     data class AssignTheme(val themeId: Long?) : GraphAction()
@@ -110,6 +106,7 @@ class GraphViewModel @Inject constructor(
                     relatedNodesByNode.getOrPut(edge.toId) { mutableListOf() }.add(fromNode)
                 }
 
+                val connectedIds = edges.flatMap { listOf(it.fromId, it.toId) }.toSet()
                 val items = nodes.filter { it.status != NodeStatus.ABANDONED }.map { node ->
                     NodeItem(
                         node = node,
@@ -117,6 +114,7 @@ class GraphViewModel @Inject constructor(
                             ?.mapNotNull { edge -> nodeMap[edge.fromId]?.let { Prereq(edge, it) } }
                             ?: emptyList(),
                         relatedNodes = relatedNodesByNode[node.id] ?: emptyList(),
+                        isConnected = node.id in connectedIds,
                     )
                 }
                 Triple(nodes, items, themes)
@@ -144,13 +142,6 @@ class GraphViewModel @Inject constructor(
                     }
                     is GraphAction.RemoveEdge -> {
                         nodeRepository.removeEdge(action.edge)
-                    }
-                    is GraphAction.ToggleTheme -> {
-                        _state.update { s ->
-                            val ids = s.expandedThemeIds.toMutableSet()
-                            if (action.themeId in ids) ids.remove(action.themeId) else ids.add(action.themeId)
-                            s.copy(expandedThemeIds = ids)
-                        }
                     }
                     is GraphAction.ShowAssignTheme -> {
                         _state.update { it.copy(assignThemeTarget = action.node) }
