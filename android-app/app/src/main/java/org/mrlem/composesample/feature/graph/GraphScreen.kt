@@ -197,7 +197,7 @@ fun GraphScreen(
         )
     }
 
-    // ノード編集ダイアログ
+    // 接続管理ダイアログ（ノードタップで開く）
     if (state.editTarget != null) {
         val target = state.editTarget!!
         val targetItem = state.allItems.find { it.node.id == target.id }
@@ -205,25 +205,26 @@ fun GraphScreen(
         var editBody by remember(target.id) { mutableStateOf(target.body) }
         AlertDialog(
             onDismissRequest = { viewModel.onAction(GraphAction.DismissEdit) },
-            title = { Text("ノードを編集") },
+            title = {
+                Column {
+                    Text(
+                        text = target.title,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    val statusLabel = if (target.status == NodeStatus.READY) "READY ★" else target.status.name
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (target.status == NodeStatus.READY)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.outline,
+                    )
+                }
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = editTitle,
-                        onValueChange = { editTitle = it },
-                        label = { Text("タイトル") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = editBody,
-                        onValueChange = { editBody = it },
-                        label = { Text("メモ（任意）") },
-                        minLines = 3,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    // 前提ノード
+                    // --- 接続セクション（主役）---
                     if (targetItem != null && targetItem.prereqs.isNotEmpty()) {
                         Text(
                             text = "前提",
@@ -240,26 +241,46 @@ fun GraphScreen(
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                        TextButton(
-                            onClick = {
-                                viewModel.onAction(GraphAction.DismissEdit)
-                                viewModel.onAction(GraphAction.ShowAddEdge(target))
-                            },
-                            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
-                        ) {
-                            Text("+ 前提を追加", style = MaterialTheme.typography.labelMedium)
-                        }
-                        TextButton(
-                            onClick = {
-                                viewModel.onAction(GraphAction.DismissEdit)
-                                viewModel.onAction(GraphAction.ShowAssignTheme(target))
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                        ) {
-                            Text("テーマ変更", style = MaterialTheme.typography.labelMedium)
-                        }
+                    if (targetItem != null && targetItem.relatedNodes.isNotEmpty()) {
+                        Text(
+                            text = "関連",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        Text(
+                            text = targetItem.relatedNodes.joinToString("、") { it.title },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
+
+                    TextButton(
+                        onClick = {
+                            viewModel.onAction(GraphAction.DismissEdit)
+                            viewModel.onAction(GraphAction.ShowAddEdge(target))
+                        },
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+                    ) {
+                        Text("+ 接続を追加", style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    HorizontalDivider()
+
+                    // --- 編集セクション（副）---
+                    OutlinedTextField(
+                        value = editTitle,
+                        onValueChange = { editTitle = it },
+                        label = { Text("タイトル") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editBody,
+                        onValueChange = { editBody = it },
+                        label = { Text("メモ（任意）") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             },
             confirmButton = {
