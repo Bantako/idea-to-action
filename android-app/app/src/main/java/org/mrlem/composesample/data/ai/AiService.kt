@@ -73,6 +73,29 @@ class AiService(
         }
     }
 
+    /**
+     * 選択されたノード群にふさわしいテーマ名を 2〜3 候補返す。
+     * APIキー未設定・エラー時は空リストを返す。
+     */
+    suspend fun suggestThemeNames(nodeTitles: List<String>): List<String> {
+        if (!isAvailable || nodeTitles.isEmpty()) return emptyList()
+        return withContext(Dispatchers.IO) {
+            try {
+                val list = nodeTitles.joinToString("\n") { "- \"$it\"" }
+                val prompt = """
+                    以下のアイデア群をひとまとまりのテーマとして表す短い名前を2〜3個提案してください。
+                    $list
+                    必ず次のJSON形式のみで返してください: {"names": ["名前1", "名前2", "名前3"]}
+                """.trimIndent()
+                val json = callApi(prompt) ?: return@withContext emptyList()
+                val arr = json.getJSONArray("names")
+                (0 until arr.length()).map { arr.getString(it) }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+    }
+
     private fun callApi(prompt: String): JSONObject? {
         val body = JSONObject().apply {
             put("model", "claude-haiku-4-5-20251001")

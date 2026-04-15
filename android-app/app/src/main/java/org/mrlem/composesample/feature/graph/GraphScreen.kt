@@ -405,12 +405,31 @@ fun GraphScreen(
             onDismissRequest = { viewModel.onAction(GraphAction.DismissCreateTheme) },
             title = { Text("テーマを作成") },
             text = {
-                OutlinedTextField(
-                    value = themeName,
-                    onValueChange = { themeName = it },
-                    label = { Text("テーマ名") },
-                    singleLine = true,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.themeSuggestions.isNotEmpty()) {
+                        Text(
+                            text = "AI の提案",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            state.themeSuggestions.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = { themeName = suggestion },
+                                    label = { Text(suggestion) },
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = themeName,
+                        onValueChange = { themeName = it },
+                        label = { Text("テーマ名") },
+                        singleLine = true,
+                    )
+                }
             },
             confirmButton = {
                 TextButton(

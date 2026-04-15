@@ -14,6 +14,7 @@ import org.mrlem.composesample.data.db.EdgeType
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.data.db.ThemeEntity
+import org.mrlem.composesample.data.ai.AiService
 import org.mrlem.composesample.domain.NodeRepository
 import org.mrlem.composesample.domain.ThemeRepository
 import javax.inject.Inject
@@ -44,6 +45,7 @@ data class GraphState(
     val editTarget: NodeEntity? = null,
     val deleteThemeTarget: ThemeEntity? = null,
     val showCreateTheme: Boolean = false,
+    val themeSuggestions: List<String> = emptyList(),
 ) {
     val isSelectMode: Boolean get() = selectedNodeIds.isNotEmpty()
     val connectedItems: List<NodeItem> get() = allItems.filter { it.isConnected }
@@ -86,6 +88,7 @@ sealed class GraphAction {
 class GraphViewModel @Inject constructor(
     private val nodeRepository: NodeRepository,
     private val themeRepository: ThemeRepository,
+    private val aiService: AiService,
 ) : UnidirectionalViewModel<GraphState, GraphAction, Unit>() {
 
     private val _state = MutableStateFlow(GraphState())
@@ -169,10 +172,18 @@ class GraphViewModel @Inject constructor(
                         _state.update { it.copy(assignThemeTarget = null) }
                     }
                     is GraphAction.ShowCreateTheme -> {
-                        _state.update { it.copy(showCreateTheme = true) }
+                        _state.update { it.copy(showCreateTheme = true, themeSuggestions = emptyList()) }
+                        val selectedTitles = _state.value.selectedNodeIds
+                            .mapNotNull { id -> _state.value.allNodes.find { it.id == id }?.title }
+                        if (selectedTitles.isNotEmpty()) {
+                            viewModelScope.launch {
+                                val suggestions = aiService.suggestThemeNames(selectedTitles)
+                                _state.update { it.copy(themeSuggestions = suggestions) }
+                            }
+                        }
                     }
                     is GraphAction.DismissCreateTheme -> {
-                        _state.update { it.copy(showCreateTheme = false) }
+                        _state.update { it.copy(showCreateTheme = false, themeSuggestions = emptyList()) }
                     }
                     is GraphAction.CreateTheme -> {
                         if (action.name.isNotBlank()) {
