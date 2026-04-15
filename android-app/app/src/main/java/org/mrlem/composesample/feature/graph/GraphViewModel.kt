@@ -26,6 +26,7 @@ data class Prereq(
 data class NodeItem(
     val node: NodeEntity,
     val prereqs: List<Prereq>,
+    val relatedNodes: List<NodeEntity> = emptyList(),
 )
 
 data class GraphState(
@@ -34,6 +35,7 @@ data class GraphState(
     val allNodes: List<NodeEntity> = emptyList(),
     val expandedThemeIds: Set<Long> = emptySet(),
     val addEdgeTarget: NodeEntity? = null,
+    val addEdgeType: EdgeType = EdgeType.PREREQUISITE,
     val assignThemeTarget: NodeEntity? = null,
     val editTarget: NodeEntity? = null,
     val deleteThemeTarget: ThemeEntity? = null,
@@ -51,6 +53,7 @@ data class GraphState(
 sealed class GraphAction {
     data class ShowAddEdge(val node: NodeEntity) : GraphAction()
     object DismissAddEdge : GraphAction()
+    data class SelectEdgeType(val type: EdgeType) : GraphAction()
     data class AddEdge(val fromId: Long) : GraphAction()
     data class RemoveEdge(val edge: EdgeEntity) : GraphAction()
     data class ToggleTheme(val themeId: Long) : GraphAction()
@@ -91,12 +94,21 @@ class GraphViewModel @Inject constructor(
                     .filter { it.type == EdgeType.PREREQUISITE }
                     .groupBy { it.toId }
 
+                val relatedNodesByNode = mutableMapOf<Long, MutableList<NodeEntity>>()
+                edges.filter { it.type == EdgeType.RELATED }.forEach { edge ->
+                    val toNode = nodeMap[edge.toId] ?: return@forEach
+                    val fromNode = nodeMap[edge.fromId] ?: return@forEach
+                    relatedNodesByNode.getOrPut(edge.fromId) { mutableListOf() }.add(toNode)
+                    relatedNodesByNode.getOrPut(edge.toId) { mutableListOf() }.add(fromNode)
+                }
+
                 val items = nodes.filter { it.status != NodeStatus.ABANDONED }.map { node ->
                     NodeItem(
                         node = node,
                         prereqs = incomingPrereqsByNode[node.id]
                             ?.mapNotNull { edge -> nodeMap[edge.fromId]?.let { Prereq(edge, it) } }
                             ?: emptyList(),
+                        relatedNodes = relatedNodesByNode[node.id] ?: emptyList(),
                     )
                 }
                 Triple(nodes, items, themes)
@@ -111,12 +123,16 @@ class GraphViewModel @Inject constructor(
                         _state.update { it.copy(addEdgeTarget = action.node) }
                     }
                     is GraphAction.DismissAddEdge -> {
-                        _state.update { it.copy(addEdgeTarget = null) }
+                        _state.update { it.copy(addEdgeTarget = null, addEdgeType = EdgeType.PREREQUISITE) }
+                    }
+                    is GraphAction.SelectEdgeType -> {
+                        _state.update { it.copy(addEdgeType = action.type) }
                     }
                     is GraphAction.AddEdge -> {
                         val target = _state.value.addEdgeTarget ?: return@collect
-                        nodeRepository.addEdge(fromId = action.fromId, toId = target.id)
-                        _state.update { it.copy(addEdgeTarget = null) }
+                        val type = _state.value.addEdgeType
+                        nodeRepository.addEdge(fromId = action.fromId, toId = target.id, type = type)
+                        _state.update { it.copy(addEdgeTarget = null, addEdgeType = EdgeType.PREREQUISITE) }
                     }
                     is GraphAction.RemoveEdge -> {
                         nodeRepository.removeEdge(action.edge)

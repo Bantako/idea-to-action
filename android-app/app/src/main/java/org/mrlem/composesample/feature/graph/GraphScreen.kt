@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.mrlem.composesample.data.db.EdgeType
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.data.db.ThemeEntity
@@ -118,21 +120,35 @@ fun GraphScreen(
         }
     }
 
-    // 前提追加ダイアログ
+    // 接続追加ダイアログ
     if (state.addEdgeTarget != null) {
         val target = state.addEdgeTarget!!
         val candidates = state.allNodes.filter { it.id != target.id }
         AlertDialog(
             onDismissRequest = { viewModel.onAction(GraphAction.DismissAddEdge) },
-            title = { Text("「${target.title}」の前提ノードを選択") },
+            title = { Text("「${target.title}」に接続を追加") },
             text = {
-                LazyColumn {
-                    items(candidates, key = { it.id }) { node ->
-                        TextButton(
-                            onClick = { viewModel.onAction(GraphAction.AddEdge(node.id)) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(node.title)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            EdgeType.PREREQUISITE to "前提",
+                            EdgeType.RELATED to "関連",
+                        ).forEach { (type, label) ->
+                            FilterChip(
+                                selected = state.addEdgeType == type,
+                                onClick = { viewModel.onAction(GraphAction.SelectEdgeType(type)) },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+                    LazyColumn {
+                        items(candidates, key = { it.id }) { node ->
+                            TextButton(
+                                onClick = { viewModel.onAction(GraphAction.AddEdge(node.id)) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(node.title)
+                            }
                         }
                     }
                 }
@@ -437,7 +453,16 @@ private fun NodeItemRow(
 
         if (item.prereqs.isNotEmpty()) {
             Text(
-                text = item.prereqs.joinToString(" → ") { it.fromNode.title },
+                text = "前提: " + item.prereqs.joinToString("、") { it.fromNode.title },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+
+        if (item.relatedNodes.isNotEmpty()) {
+            Text(
+                text = "関連: " + item.relatedNodes.joinToString("、") { it.title },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(top = 2.dp),

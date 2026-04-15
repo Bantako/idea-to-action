@@ -62,9 +62,9 @@ class NodeRepository @Inject constructor(
         recalculateReady()
     }
 
-    suspend fun addEdge(fromId: Long, toId: Long) {
-        edgeDao.insert(EdgeEntity(fromId = fromId, toId = toId))
-        recalculateReady()
+    suspend fun addEdge(fromId: Long, toId: Long, type: EdgeType = EdgeType.PREREQUISITE) {
+        edgeDao.insert(EdgeEntity(fromId = fromId, toId = toId, type = type))
+        if (type == EdgeType.PREREQUISITE) recalculateReady()
     }
 
     suspend fun removeEdge(edge: EdgeEntity) {
