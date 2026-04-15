@@ -1,10 +1,13 @@
 package org.mrlem.composesample.feature.graph
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -47,6 +50,7 @@ fun GraphScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -79,7 +83,10 @@ fun GraphScreen(
             items(unorganized, key = { "u_${it.node.id}" }) { item ->
                 NodeItemRow(
                     item = item,
+                    isSelected = item.node.id in state.selectedNodeIds,
+                    isSelectMode = state.isSelectMode,
                     onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
+                    onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
             }
@@ -110,7 +117,10 @@ fun GraphScreen(
                     themeItems.forEach { item ->
                         NodeItemRow(
                             item = item,
+                            isSelected = item.node.id in state.selectedNodeIds,
+                            isSelectMode = state.isSelectMode,
                             onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
+                            onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
                             indented = true,
                         )
                         HorizontalDivider(modifier = Modifier.padding(start = 32.dp))
@@ -119,6 +129,33 @@ fun GraphScreen(
             }
         }
     }
+
+    // 選択モードのボトムバー
+    AnimatedVisibility(
+        visible = state.isSelectMode,
+        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "${state.selectedNodeIds.size}件選択中",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Row {
+                TextButton(onClick = { viewModel.onAction(GraphAction.ClearSelection) }) {
+                    Text("キャンセル")
+                }
+            }
+        }
+    }
+    } // Box
 
     // 接続追加ダイアログ
     if (state.addEdgeTarget != null) {
@@ -422,26 +459,43 @@ private fun ThemeSectionHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NodeItemRow(
     item: NodeItem,
+    isSelected: Boolean = false,
+    isSelectMode: Boolean = false,
     onEdit: () -> Unit,
+    onLongPress: () -> Unit = {},
     indented: Boolean = false,
 ) {
     val isReady = item.node.status == NodeStatus.READY
     val startPadding = if (indented) 32.dp else 16.dp
     val primaryColor = MaterialTheme.colorScheme.primary
+    val selectedColor = MaterialTheme.colorScheme.tertiary
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onEdit)
+            .combinedClickable(
+                onClick = { if (isSelectMode) onLongPress() else onEdit() },
+                onLongClick = onLongPress,
+            )
             .background(
-                if (isReady) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                else Color.Transparent
+                when {
+                    isSelected -> selectedColor.copy(alpha = 0.15f)
+                    isReady -> primaryColor.copy(alpha = 0.08f)
+                    else -> Color.Transparent
+                }
+            )
+            .then(
+                if (isSelected) Modifier.border(
+                    width = 1.dp,
+                    color = selectedColor.copy(alpha = 0.5f),
+                ) else Modifier
             )
             .drawBehind {
-                if (isReady) {
+                if (isReady && !isSelected) {
                     drawLine(
                         color = primaryColor,
                         start = Offset(0f, 0f),

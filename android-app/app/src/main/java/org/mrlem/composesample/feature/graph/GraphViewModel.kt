@@ -34,6 +34,7 @@ data class GraphState(
     val allItems: List<NodeItem> = emptyList(),
     val allNodes: List<NodeEntity> = emptyList(),
     val expandedThemeIds: Set<Long> = emptySet(),
+    val selectedNodeIds: Set<Long> = emptySet(),
     val addEdgeTarget: NodeEntity? = null,
     val addEdgeType: EdgeType = EdgeType.PREREQUISITE,
     val assignThemeTarget: NodeEntity? = null,
@@ -41,6 +42,7 @@ data class GraphState(
     val deleteThemeTarget: ThemeEntity? = null,
     val showCreateTheme: Boolean = false,
 ) {
+    val isSelectMode: Boolean get() = selectedNodeIds.isNotEmpty()
     val unorganizedItems: List<NodeItem>
         get() = allItems.filter { it.node.themeId == null }
 
@@ -63,6 +65,8 @@ sealed class GraphAction {
     object ShowCreateTheme : GraphAction()
     object DismissCreateTheme : GraphAction()
     data class CreateTheme(val name: String) : GraphAction()
+    data class ToggleSelect(val nodeId: Long) : GraphAction()
+    object ClearSelection : GraphAction()
     data class ShowDeleteTheme(val theme: ThemeEntity) : GraphAction()
     object DismissDeleteTheme : GraphAction()
     object ConfirmDeleteTheme : GraphAction()
@@ -166,6 +170,16 @@ class GraphViewModel @Inject constructor(
                             themeRepository.create(action.name)
                         }
                         _state.update { it.copy(showCreateTheme = false) }
+                    }
+                    is GraphAction.ToggleSelect -> {
+                        _state.update { s ->
+                            val ids = s.selectedNodeIds.toMutableSet()
+                            if (action.nodeId in ids) ids.remove(action.nodeId) else ids.add(action.nodeId)
+                            s.copy(selectedNodeIds = ids)
+                        }
+                    }
+                    is GraphAction.ClearSelection -> {
+                        _state.update { it.copy(selectedNodeIds = emptySet()) }
                     }
                     is GraphAction.ShowDeleteTheme -> {
                         _state.update { it.copy(deleteThemeTarget = action.theme) }
