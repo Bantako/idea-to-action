@@ -338,9 +338,6 @@ fun GraphScreen(
                     TextButton(onClick = { viewModel.onAction(GraphAction.DeferNode) }) {
                         Text("今は対応しない", color = MaterialTheme.colorScheme.secondary)
                     }
-                    TextButton(onClick = { viewModel.onAction(GraphAction.AbandonNode) }) {
-                        Text("やめる", color = MaterialTheme.colorScheme.error)
-                    }
                     TextButton(onClick = { viewModel.onAction(GraphAction.DeleteNode) }) {
                         Text("削除", color = MaterialTheme.colorScheme.error)
                     }
