@@ -59,14 +59,7 @@ fun GraphScreen(
     ) {
         // 未整理ゾーン
         item(key = "unorganized_header") {
-            SectionHeader(
-                title = "未整理",
-                action = {
-                    TextButton(onClick = { viewModel.onAction(GraphAction.ShowCreateTheme) }) {
-                        Text("+ テーマ作成", style = MaterialTheme.typography.labelMedium)
-                    }
-                },
-            )
+            SectionHeader(title = "未整理")
         }
 
         val unorganized = state.unorganizedItems
@@ -430,25 +423,16 @@ fun GraphScreen(
 }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    action: @Composable (() -> Unit)? = null,
-) {
-    Row(
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        action?.invoke()
-    }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
