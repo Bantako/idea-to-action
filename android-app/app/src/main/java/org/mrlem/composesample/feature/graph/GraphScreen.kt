@@ -149,6 +149,14 @@ fun GraphScreen(
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             Row {
+                if (state.themes.isNotEmpty()) {
+                    TextButton(onClick = { viewModel.onAction(GraphAction.ShowBulkAssign) }) {
+                        Text("既存に追加")
+                    }
+                }
+                TextButton(onClick = { viewModel.onAction(GraphAction.ShowCreateTheme) }) {
+                    Text("テーマ命名")
+                }
                 TextButton(onClick = { viewModel.onAction(GraphAction.ClearSelection) }) {
                     Text("キャンセル")
                 }
@@ -358,6 +366,32 @@ fun GraphScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onAction(GraphAction.DismissDeleteTheme) }) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+
+    // 既存テーマへ一括追加ダイアログ
+    if (state.showBulkAssign) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onAction(GraphAction.DismissBulkAssign) },
+            title = { Text("テーマに追加（${state.selectedNodeIds.size}件）") },
+            text = {
+                LazyColumn {
+                    items(state.themes, key = { it.id }) { theme ->
+                        TextButton(
+                            onClick = { viewModel.onAction(GraphAction.BulkAssign(theme.id)) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(theme.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.onAction(GraphAction.DismissBulkAssign) }) {
                     Text("キャンセル")
                 }
             },

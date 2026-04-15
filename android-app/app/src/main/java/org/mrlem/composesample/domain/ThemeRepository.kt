@@ -29,4 +29,8 @@ class ThemeRepository @Inject constructor(
 
     suspend fun assignNode(nodeId: Long, themeId: Long?) =
         nodeDao.updateTheme(nodeId, themeId)
+
+    suspend fun assignNodes(nodeIds: List<Long>, themeId: Long?) {
+        nodeIds.forEach { nodeDao.updateTheme(it, themeId) }
+    }
 }

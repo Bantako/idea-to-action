@@ -35,6 +35,7 @@ data class GraphState(
     val allNodes: List<NodeEntity> = emptyList(),
     val expandedThemeIds: Set<Long> = emptySet(),
     val selectedNodeIds: Set<Long> = emptySet(),
+    val showBulkAssign: Boolean = false,
     val addEdgeTarget: NodeEntity? = null,
     val addEdgeType: EdgeType = EdgeType.PREREQUISITE,
     val assignThemeTarget: NodeEntity? = null,
@@ -67,6 +68,9 @@ sealed class GraphAction {
     data class CreateTheme(val name: String) : GraphAction()
     data class ToggleSelect(val nodeId: Long) : GraphAction()
     object ClearSelection : GraphAction()
+    object ShowBulkAssign : GraphAction()
+    object DismissBulkAssign : GraphAction()
+    data class BulkAssign(val themeId: Long) : GraphAction()
     data class ShowDeleteTheme(val theme: ThemeEntity) : GraphAction()
     object DismissDeleteTheme : GraphAction()
     object ConfirmDeleteTheme : GraphAction()
@@ -167,9 +171,13 @@ class GraphViewModel @Inject constructor(
                     }
                     is GraphAction.CreateTheme -> {
                         if (action.name.isNotBlank()) {
-                            themeRepository.create(action.name)
+                            val themeId = themeRepository.create(action.name)
+                            val selectedIds = _state.value.selectedNodeIds.toList()
+                            if (selectedIds.isNotEmpty()) {
+                                themeRepository.assignNodes(selectedIds, themeId)
+                            }
                         }
-                        _state.update { it.copy(showCreateTheme = false) }
+                        _state.update { it.copy(showCreateTheme = false, selectedNodeIds = emptySet()) }
                     }
                     is GraphAction.ToggleSelect -> {
                         _state.update { s ->
@@ -180,6 +188,17 @@ class GraphViewModel @Inject constructor(
                     }
                     is GraphAction.ClearSelection -> {
                         _state.update { it.copy(selectedNodeIds = emptySet()) }
+                    }
+                    is GraphAction.ShowBulkAssign -> {
+                        _state.update { it.copy(showBulkAssign = true) }
+                    }
+                    is GraphAction.DismissBulkAssign -> {
+                        _state.update { it.copy(showBulkAssign = false) }
+                    }
+                    is GraphAction.BulkAssign -> {
+                        val selectedIds = _state.value.selectedNodeIds.toList()
+                        themeRepository.assignNodes(selectedIds, action.themeId)
+                        _state.update { it.copy(showBulkAssign = false, selectedNodeIds = emptySet()) }
                     }
                     is GraphAction.ShowDeleteTheme -> {
                         _state.update { it.copy(deleteThemeTarget = action.theme) }
