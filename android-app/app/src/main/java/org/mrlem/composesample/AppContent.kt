@@ -51,7 +51,7 @@ fun AppContent() {
     ) { contentPadding ->
         val pid = selectedProjectId
         when {
-            selectedTab == 0 -> TodayScreen(contentPadding)
+            selectedTab == 0 -> TodayScreen(contentPadding, onNavigateToProjects = { selectedTab = 2 })
             selectedTab == 1 -> CaptureScreen(contentPadding)
             selectedTab == 2 && pid != null -> ProjectDetailScreen(
                 contentPadding = contentPadding,

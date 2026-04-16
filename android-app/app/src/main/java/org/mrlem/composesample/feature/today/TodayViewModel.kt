@@ -6,31 +6,41 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mrlem.android.core.feature.ui.UnidirectionalViewModel
-import org.mrlem.composesample.data.db.NodeEntity
-import org.mrlem.composesample.data.db.NodeStatus
-import org.mrlem.composesample.data.db.ThemeEntity
-import org.mrlem.composesample.domain.NodeRepository
-import org.mrlem.composesample.domain.ThemeRepository
+import org.mrlem.composesample.data.db.DailyLogEntity
+import org.mrlem.composesample.data.db.ProjectEntity
+import org.mrlem.composesample.data.db.StepEntity
+import org.mrlem.composesample.data.db.StepStatus
+import org.mrlem.composesample.domain.DailyLogRepository
+import org.mrlem.composesample.domain.ProjectRepository
+import org.mrlem.composesample.domain.StepRepository
 import javax.inject.Inject
 
 data class TodayState(
-    val activeNodes: List<NodeEntity> = emptyList(),
-    val readyByTheme: List<Pair<ThemeEntity?, List<NodeEntity>>> = emptyList(),
+    val focusedProject: ProjectEntity? = null,
+    val pendingSteps: List<StepEntity> = emptyList(),
+    val todayLogs: List<DailyLogEntity> = emptyList(),
+    val manualInput: String = "",
 )
 
 sealed class TodayAction {
-    data class MarkActive(val node: NodeEntity) : TodayAction()
-    data class MarkDone(val node: NodeEntity) : TodayAction()
-    data class MarkAbandoned(val node: NodeEntity) : TodayAction()
+    data class MarkStepDone(val step: StepEntity) : TodayAction()
+    data class AddManualLog(val what: String) : TodayAction()
+    data class DeleteLog(val log: DailyLogEntity) : TodayAction()
+    data class UpdateManualInput(val text: String) : TodayAction()
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TodayViewModel @Inject constructor(
-    private val repository: NodeRepository,
-    private val themeRepository: ThemeRepository,
+    private val projectRepository: ProjectRepository,
+    private val stepRepository: StepRepository,
+    private val dailyLogRepository: DailyLogRepository,
 ) : UnidirectionalViewModel<TodayState, TodayAction, Unit>() {
 
     private val _state = MutableStateFlow(TodayState())
@@ -38,43 +48,52 @@ class TodayViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(
-                repository.observeAll(),
-                themeRepository.observeAll(),
-            ) { nodes, themes ->
-                val active = nodes.filter { it.status == NodeStatus.ACTIVE }
-                val ready = nodes.filter { it.status == NodeStatus.READY }
-                active to groupByTheme(ready, themes)
-            }.collect { (active, grouped) ->
-                _state.update { it.copy(activeNodes = active, readyByTheme = grouped) }
-            }
+            projectRepository.observeFocused()
+                .flatMapLatest { focused ->
+                    val project = focused.firstOrNull()
+                    if (project == null) {
+                        combine(
+                            flowOf(emptyList<StepEntity>()),
+                            dailyLogRepository.observeToday(),
+                        ) { steps, logs -> Triple(null as ProjectEntity?, steps, logs) }
+                    } else {
+                        combine(
+                            stepRepository.observeByProject(project.id),
+                            dailyLogRepository.observeToday(),
+                        ) { steps, logs ->
+                            Triple(project, steps.filter { it.status == StepStatus.PENDING }, logs)
+                        }
+                    }
+                }
+                .collect { (project, steps, logs) ->
+                    _state.update { it.copy(
+                        focusedProject = project,
+                        pendingSteps = steps,
+                        todayLogs = logs,
+                    ) }
+                }
         }
         viewModelScope.launch {
             actions.collect { action ->
                 when (action) {
-                    is TodayAction.MarkActive ->
-                        repository.updateStatus(action.node, NodeStatus.ACTIVE)
-                    is TodayAction.MarkDone ->
-                        repository.updateStatus(action.node, NodeStatus.DONE)
-                    is TodayAction.MarkAbandoned ->
-                        repository.updateStatus(action.node, NodeStatus.ABANDONED)
+                    is TodayAction.MarkStepDone -> {
+                        stepRepository.markDone(action.step)
+                        dailyLogRepository.createFromStep(action.step)
+                    }
+                    is TodayAction.AddManualLog -> {
+                        if (action.what.isNotBlank()) {
+                            dailyLogRepository.createManual(action.what)
+                            _state.update { it.copy(manualInput = "") }
+                        }
+                    }
+                    is TodayAction.DeleteLog -> {
+                        dailyLogRepository.delete(action.log)
+                    }
+                    is TodayAction.UpdateManualInput -> {
+                        _state.update { it.copy(manualInput = action.text) }
+                    }
                 }
             }
-        }
-    }
-
-    private fun groupByTheme(
-        nodes: List<NodeEntity>,
-        themes: List<ThemeEntity>,
-    ): List<Pair<ThemeEntity?, List<NodeEntity>>> {
-        val grouped = nodes.groupBy { it.themeId }
-        return buildList {
-            themes.forEach { theme ->
-                val themedNodes = grouped[theme.id]
-                if (!themedNodes.isNullOrEmpty()) add(theme to themedNodes)
-            }
-            val unthemed = grouped[null]
-            if (!unthemed.isNullOrEmpty()) add(null to unthemed)
         }
     }
 }

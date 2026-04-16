@@ -4,33 +4,42 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import org.mrlem.composesample.data.db.NodeEntity
-import org.mrlem.composesample.data.db.ThemeEntity
+import org.mrlem.composesample.data.db.DailyLogEntity
+import org.mrlem.composesample.data.db.StepEntity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun TodayScreen(
     contentPadding: PaddingValues,
+    onNavigateToProjects: () -> Unit = {},
     viewModel: TodayViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val isEmpty = state.activeNodes.isEmpty() && state.readyByTheme.isEmpty()
 
     LazyColumn(
         modifier = Modifier
@@ -38,76 +47,98 @@ fun TodayScreen(
             .padding(contentPadding),
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        if (isEmpty) {
+        if (state.focusedProject == null) {
+            item {
+                NoFocusedProject(onNavigateToProjects = onNavigateToProjects)
+            }
+        } else {
             item {
                 Text(
-                    text = "着手できるノードがありません",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    color = MaterialTheme.colorScheme.outline,
+                    text = state.focusedProject!!.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
-            return@LazyColumn
+
+            if (state.pendingSteps.isEmpty()) {
+                item {
+                    Text(
+                        text = "未完了のステップがありません",
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    )
+                }
+            } else {
+                items(state.pendingSteps, key = { "step_${it.id}" }) { step ->
+                    PendingStepRow(
+                        step = step,
+                        onDone = { viewModel.onAction(TodayAction.MarkStepDone(step)) },
+                    )
+                    HorizontalDivider()
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
 
-        if (state.activeNodes.isNotEmpty()) {
+        item {
+            Text(
+                text = "今日の記録",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
+        if (state.todayLogs.isEmpty()) {
             item {
-                SectionHeader("進行中")
+                Text(
+                    text = "まだ記録がありません",
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
             }
-            items(state.activeNodes, key = { it.id }) { node ->
-                ActiveNodeRow(
-                    node = node,
-                    onDone = { viewModel.onAction(TodayAction.MarkDone(node)) },
-                    onAbandon = { viewModel.onAction(TodayAction.MarkAbandoned(node)) },
+        } else {
+            items(state.todayLogs, key = { "log_${it.id}" }) { log ->
+                DailyLogRow(
+                    log = log,
+                    onDelete = { viewModel.onAction(TodayAction.DeleteLog(log)) },
                 )
                 HorizontalDivider()
             }
         }
 
-        if (state.readyByTheme.isNotEmpty()) {
-            item {
-                val label = "着手できます"
-                SectionHeader(label)
-            }
-            state.readyByTheme.forEach { (theme, nodes) ->
-                item(key = "theme_${theme?.id ?: "none"}") {
-                    ThemeGroupHeader(theme)
-                }
-                items(nodes, key = { it.id }) { node ->
-                    ReadyNodeRow(
-                        node = node,
-                        onStart = { viewModel.onAction(TodayAction.MarkActive(node)) },
-                    )
-                    HorizontalDivider()
-                }
-            }
+        item {
+            ManualLogInput(
+                value = state.manualInput,
+                onValueChange = { viewModel.onAction(TodayAction.UpdateManualInput(it)) },
+                onSubmit = { viewModel.onAction(TodayAction.AddManualLog(state.manualInput)) },
+            )
         }
     }
 }
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+private fun NoFocusedProject(onNavigateToProjects: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "集中するプロジェクトを選んでください",
+            color = MaterialTheme.colorScheme.outline,
+        )
+        TextButton(onClick = onNavigateToProjects) {
+            Text("Projects を開く")
+        }
+    }
 }
 
 @Composable
-private fun ThemeGroupHeader(theme: ThemeEntity?) {
-    Text(
-        text = theme?.name ?: "未整理",
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.outline,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-    )
-}
-
-@Composable
-private fun ActiveNodeRow(node: NodeEntity, onDone: () -> Unit, onAbandon: () -> Unit) {
+private fun PendingStepRow(step: StepEntity, onDone: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,22 +146,19 @@ private fun ActiveNodeRow(node: NodeEntity, onDone: () -> Unit, onAbandon: () ->
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = node.title, style = MaterialTheme.typography.bodyLarge)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onAbandon) {
-                Text("やめる")
-            }
-            Button(onClick = onDone) {
-                Text("完了")
-            }
+        Text(
+            text = step.title,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Button(onClick = onDone) {
+            Text("完了")
         }
     }
 }
 
 @Composable
-private fun ReadyNodeRow(node: NodeEntity, onStart: () -> Unit) {
+private fun DailyLogRow(log: DailyLogEntity, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,11 +166,60 @@ private fun ReadyNodeRow(node: NodeEntity, onStart: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = node.title, style = MaterialTheme.typography.bodyLarge)
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "✓",
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Column {
+                Text(text = log.what, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = formatTime(log.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
         }
-        OutlinedButton(onClick = onStart) {
-            Text("着手")
+        TextButton(onClick = onDelete) {
+            Text("削除", color = MaterialTheme.colorScheme.outline)
         }
     }
 }
+
+@Composable
+private fun ManualLogInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text("一言記録を追加…") },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+        )
+        Button(
+            onClick = onSubmit,
+            enabled = value.isNotBlank(),
+        ) {
+            Text("追加")
+        }
+    }
+}
+
+private fun formatTime(timestamp: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
