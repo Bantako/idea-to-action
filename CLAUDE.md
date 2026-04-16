@@ -59,135 +59,145 @@ cd android-app
 ### フロー構造
 
 ```
-アイデアをどんどん投げ込む（Captureタブ）
-  ↓ AIが既存ノードとの関係・統合を提案
-ノード（IDEA状態）
-  ↓ エッジを張って関係を整理（Graphタブ）
-DAG（有向非巡回グラフ）
-  ↓ 前提ノードがすべてDONEになると自動でREADY状態に
-Today（READYなノードをAIが優先提案）
-  ↓ 着手マーク（ACTIVE）→ 完了マーク（DONE）
-振り返り（Graphタブで状態・期間フィルタして過去を参照）
+思いついたとき
+  ↓ Capture タブ → メモ投入（10秒で終わる）
+  ↓ AIが既存プロジェクトとの関連候補を提案
+
+気が向いたとき
+  ↓ Capture タブ → 溜まったメモをプロジェクトに紐付け
+  ↓ Projects タブ → ステップを追加、フォーカスを切り替え
+
+朝（または気が向いたとき）
+  ↓ Today タブ → フォーカス中プロジェクトの次ステップが見える
+  ↓ 「これやろう」→ ステップ完了 → DailyLog 自動記録
+
+寝る前（任意）
+  ↓ Today の「今日の記録」を確認。一言メモを追加してもしなくてもよい
 ```
 
 ### ナビゲーション構成（BottomNav 3タブ）
 
 ```
-Capture | Graph | Today
+Today | Capture | Projects
 ```
 
-- **Capture**: テキスト投入フォーム + 未接続ノード一覧。AIが関係候補を提案
-- **Graph**: 整理セッション向けUI。エッジを張って関係を構造化する。テーマはエッジで繋がったクラスタに後から名前をつけるもの
-- **Today**: READYなノード一覧（テーマ別グルーピング）。着手・完了マーク。AIによる優先提案
+- **Today**: フォーカス中プロジェクトの pending ステップ一覧。ステップ完了 → DailyLog 自動記録。今日の記録セクション
+- **Capture**: テキスト投入フォーム + 未整理メモ一覧。メモタップ → プロジェクトに紐付け。AIが関連プロジェクト候補を提案
+- **Projects**: プロジェクト一覧（フォーカス中を強調）。タップ → ゴール・ステップ・紐付きメモ・実績ログ
 
-### Graph タブの設計
+### Projects タブの設計
 
-**設計思想: ボトムアップ（庭師型）**
+アクティブなプロジェクト一覧をフォーカス中のものを上部に強調して表示。
 
-整理の主役は「繋ぐ」こと。テーマは先に作る箱ではなく、繋がりが見えてから付ける事後ラベル。
-Zettelkasten的に「エッジを張ることで構造が浮かび上がる」体験を目指す。
-
-```
-[ノード一覧（IDEA/READY中心）]
-  ─ LP作る [IDEA]
-  ─ 競合調査する [IDEA]         ← タップ → 接続管理
-  ─ サービス方向を決める [IDEA]
-  ─ 健康診断予約 [IDEA]
-  ─ 競合調査する [READY ★]      ← READY は強調表示
-
-  ↓ 繋いでいくと構造が見えてくる
-
-  ─ 競合調査する → サービス方向を決める（PREREQUISITE）
-  ─ LP作る → サービス方向を決める（PREREQUISITE）
-
-  ↓ 密なクラスタに気づいたら命名
-
-  [副業] LP作る / 競合調査する / サービス方向を決める
-```
+プロジェクト詳細:
+- ゴール表示・編集（任意。書けると方向が定まる）
+- ステップ一覧（追加・完了マーク）
+- 紐付いたメモ一覧（元のアイデアを参照可能）
+- 実績ログ（DailyLog からフィルタ）
 
 操作:
-- ノードタップ → 接続管理（前提・関連・統合のエッジ追加・削除）
-- 長押し → 複数選択モード
-- 複数選択 → 「テーマとして命名」= クラスタへの事後ラベル付け
-- AIによる「これらは繋がっています、グループ名を提案します」
-
-整理後の感覚: 「繋いでいたら、気づいたら全体が見えていた」
+- 「フォーカスする」ボタン（1〜2個に絞る想定）
+- 「休止する」「アーカイブする」操作
+- AI: 「○○が放置されています。休止しますか？」（低優先）
 
 ### データモデル
 
 ```
-Theme {
-  id, name, color
-  created_at
-}
+Memo（アイデア・思いついたこと）
+  id: Long
+  text: String
+  projectId: Long?     // プロジェクトへの紐付け（整理済みフラグも兼ねる）
+  createdAt: Long
 
-Node {
-  id, title, body
-  theme_id (nullable)
-  status: IDEA | READY | ACTIVE | DONE | ABANDONED
-  created_at, started_at, done_at
-}
+Project（取り組みのまとまり）
+  id: Long
+  title: String
+  goal: String?        // 任意。書けると方向が定まる
+  status: active | paused | archived
+  focusedAt: Long?     // 「今これに集中」のタイムスタンプ
+  createdAt: Long
 
-Edge {
-  from_id, to_id
-  type: PREREQUISITE | RELATED | EVOLVED_FROM
-}
+Step（プロジェクト配下の具体的な行動）
+  id: Long
+  projectId: Long
+  title: String
+  sortOrder: Int
+  status: pending | done
+  doneAt: Long?
+  createdAt: Long
+
+DailyLog（やったことの記録）
+  id: Long
+  date: String         // "2026-04-16"
+  stepId: Long?        // ステップ経由の記録は紐付け
+  what: String         // やったことの一行要約
+  note: String?        // 任意メモ
+  createdAt: Long
 ```
 
-`READY` = incoming PREREQUISITE edges の全 from_node が DONE のノード（theme_idは無関係）
-
-テーマはエッジで繋がったクラスタへの事後ラベル。先に作る箱ではない。ノードの依存関係（READY判定）はエッジのみで決まる。
+アイデアと行動は分離する。Memo は「育てるもの」、Step は「完了するもの」。
+プロジェクトへの依存関係管理は不要。フォーカス中プロジェクトの pending ステップが「今やること」。
 
 ### AI機能の優先順位
 
-| 優先度 | タイミング | 用途 |
+| 優先度 | タイミング | 内容 |
 |--------|-----------|------|
-| 高 | Capture時 | 既存ノードとの類似・関係を提案してエッジ候補を出す |
-| 高 | Today表示時 | READYなノードの中から今日やるものを優先提案 |
-| 中 | Graph整理時 | 繋がりの強いノード群にテーマ名を提案（クラスタ命名補助） |
+| 高 | Capture 時 | メモ → 既存プロジェクトとの関連候補を提案 |
+| 中 | Today 表示時 | 「今日はこのステップが良さそう」と優先提案 |
+| 低 | Projects 一覧 | 「○○が放置されています。休止しますか？」 |
 
 APIキー未設定時はAI機能をすべてスキップし、手動フローで動く。
 
-### 将来検討（現時点では未実装）
-
-- **やらなくちゃいけないこと（タスク）の分離フロー**
-  - やりたいことは発散しがちでGraph整理が必要。やらなくちゃいけないことは目的・フローが明確なので整理不要
-  - 将来的には `mode: WANT | TASK` で分け、TASKはCapture→Todayに直行、Graphには現れない設計が考えられる
-  - 現時点では `due_date` で期限管理するだけで十分
+**廃止した AI 機能:**
+- Edge 提案（Edge 自体を廃止）
+- テーマ名提案（プロジェクトは自分で名前をつける）
+- ステップ具体化 AI
 
 ### やらないこと（明示的に封印）
 
+- DAG / エッジ管理（操作コストが高く実際に使われなかった）
 - 特定時刻のスケジューリング
 - タイムライン表示
 - 通知の詳細設定UI
 - バッジ・ストリーク・ゲーミフィケーション
 - チーム共有・コラボ機能
 - カレンダー連携・ルーチン管理
-- グラフのforce-directed自由配置UI（当面は階層リストで代替）
 
 ## 現在の実装状態
 
-### 実装済み（2026-04-15 時点）
+### 旧実装（2026-04-15 時点、設計見直し前）
 
-- Step 1: クリーンアップ完了
-- Step 2: Node + Edge の Room DB 実装完了
-- Step 3: Capture / Graph / Today の3タブ画面実装完了
-- Step 4: Capture時のAI関係提案・Today時のAI優先提案 実装完了
-- Step 5: Graph タブ - ノードタップ→接続管理・エッジタイプ選択・READY強調・長押し複数選択
-- Step 6: テーマ = 事後命名（Theme DB・複数選択→命名・既存テーマ一括追加）
-- Step 7: Today タブ - テーマ別グルーピング表示
-- ボトムアップ設計の徹底（Graphレイアウトをエッジ視点に変更・Captureを未接続ノードのみ表示）
-- Step 8: AI によるテーマ名提案（複数選択→命名ダイアログにチップ表示）
-- DEFERRED ステータス追加（「今は対応しない」フラグ・Graphに折りたたみセクション・復活操作）
+Node + Edge + Theme による DAG 設計を実装したが、設計レビューにより方針転換。
+以下は旧実装の記録として残す。
 
-### 将来検討（一時 pending）
+- Step 1〜8: Node/Edge/Theme/DEFERRED/AI テーマ提案まで実装済み
+- **設計上の問題**: アイデアと行動が同一エンティティ、DAGがモバイルで使われなかった
 
-- EVOLVED_FROM エッジタイプのUI対応（DBのenumには存在、UIは PREREQUISITE/RELATED のみ）
-- Theme の color フィールド活用（DB にカラムあり、UIは未使用）
+### 移行フェーズ（現在）
+
+新設計（Memo / Step / Project / DailyLog）への移行を進める。
+
+- Phase 1: データモデル移行（MemoEntity / ProjectEntity / StepEntity / DailyLogEntity 定義、旧 NodeEntity からの DB マイグレーション）
+- Phase 2: Capture 画面の修正（Node → Memo に差し替え、プロジェクトへの紐付け操作を追加）
+- Phase 3: Projects 画面の新規実装（プロジェクト一覧 + 詳細・ステップ管理）
+- Phase 4: Today 画面の書き換え（フォーカスプロジェクト表示 + DailyLog）
+- Phase 5: AI 機能の調整（Memo → Project 関連候補、Today のステップ提案）
+
+**残す既存コード:**
+- Capture の入力フォーム + リスト UI
+- AiService の基本構造（HTTP 通信・JSON パース）
+- Hilt / Room / Compose の基盤
+- AppContent の BottomNav 構造（タブ名・アイコン変更のみ）
+
+**削除するコード:**
+- EdgeEntity / EdgeDao / EdgeType（DAG 廃止）
+- NodeStatus の READY / ACTIVE / DEFERRED / ABANDONED
+- ThemeViewModel、recalculateReady()
+- AiService.rankReadyNodes() / suggestThemeNames()
 
 ## 直近の目標
 
-次のステップは未定。実際に使いながら課題を見つけて決める。
+Phase 1 のデータモデル移行から着手する。
 
 ## スコープ制約
 

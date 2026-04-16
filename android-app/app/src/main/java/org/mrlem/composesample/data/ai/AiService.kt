@@ -9,6 +9,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import org.mrlem.composesample.data.db.ProjectEntity
+import org.mrlem.composesample.data.db.StepEntity
 
 class AiService(
     private val httpClient: OkHttpClient,
@@ -41,6 +42,33 @@ class AiService(
                     .filter { id -> projects.any { it.id == id } }
             } catch (_: Exception) {
                 emptyList()
+            }
+        }
+    }
+
+    /**
+     * 未完了ステップを優先度順に並べ直す（最大5件）。
+     * APIキー未設定・エラー時は元の順序を返す。
+     */
+    suspend fun rankPendingSteps(steps: List<StepEntity>): List<StepEntity> {
+        if (!isAvailable || steps.size <= 1) return steps
+        return withContext(Dispatchers.IO) {
+            try {
+                val stepList = steps.joinToString("\n") { "- id:${it.id}, title:\"${it.title}\"" }
+                val prompt = """
+                    以下のステップを「今日取り組むべき順」に並べ替えてください。
+                    $stepList
+                    必ず次のJSON形式のみで返してください: {"ranked": [id1, id2, ...]}
+                """.trimIndent()
+                val json = callApi(prompt) ?: return@withContext steps
+                val arr = json.getJSONArray("ranked")
+                val ranked = (0 until arr.length()).map { arr.getLong(it) }
+                val stepMap = steps.associateBy { it.id }
+                val result = ranked.mapNotNull { stepMap[it] }
+                // API が返さなかった残りは末尾に追加
+                result + steps.filter { it.id !in ranked }
+            } catch (_: Exception) {
+                steps
             }
         }
     }

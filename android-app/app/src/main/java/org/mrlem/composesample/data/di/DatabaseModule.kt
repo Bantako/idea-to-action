@@ -10,10 +10,8 @@ import dagger.hilt.components.SingletonComponent
 import org.mrlem.composesample.data.db.AppDatabase
 import org.mrlem.composesample.data.db.DailyLogDao
 import org.mrlem.composesample.data.db.MemoDao
-import org.mrlem.composesample.data.db.NodeDao
 import org.mrlem.composesample.data.db.ProjectDao
 import org.mrlem.composesample.data.db.StepDao
-import org.mrlem.composesample.data.db.ThemeDao
 import javax.inject.Singleton
 
 @Module
@@ -24,14 +22,12 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "idea-to-action.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(
+                AppDatabase.MIGRATION_1_2,
+                AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4,
+            )
             .build()
-
-    @Provides
-    fun provideNodeDao(db: AppDatabase): NodeDao = db.nodeDao()
-
-    @Provides
-    fun provideThemeDao(db: AppDatabase): ThemeDao = db.themeDao()
 
     @Provides
     fun provideMemoDao(db: AppDatabase): MemoDao = db.memoDao()

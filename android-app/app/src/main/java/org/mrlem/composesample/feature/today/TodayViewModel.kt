@@ -2,16 +2,17 @@ package org.mrlem.composesample.feature.today
 
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.mrlem.android.core.feature.ui.UnidirectionalViewModel
+import org.mrlem.composesample.data.ai.AiService
 import org.mrlem.composesample.data.db.DailyLogEntity
 import org.mrlem.composesample.data.db.ProjectEntity
 import org.mrlem.composesample.data.db.StepEntity
@@ -41,6 +42,7 @@ class TodayViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val stepRepository: StepRepository,
     private val dailyLogRepository: DailyLogRepository,
+    private val aiService: AiService,
 ) : UnidirectionalViewModel<TodayState, TodayAction, Unit>() {
 
     private val _state = MutableStateFlow(TodayState())
@@ -71,6 +73,13 @@ class TodayViewModel @Inject constructor(
                         pendingSteps = steps,
                         todayLogs = logs,
                     ) }
+                    // AI によるステップ並べ替えは非同期で上書き
+                    if (aiService.isAvailable && steps.size > 1) {
+                        viewModelScope.launch {
+                            val ranked = aiService.rankPendingSteps(steps)
+                            _state.update { it.copy(pendingSteps = ranked) }
+                        }
+                    }
                 }
         }
         viewModelScope.launch {

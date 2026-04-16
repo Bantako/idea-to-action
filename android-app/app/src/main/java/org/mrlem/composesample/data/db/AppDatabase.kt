@@ -9,33 +9,23 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
-        NodeEntity::class,
-        ThemeEntity::class,
         MemoEntity::class,
         ProjectEntity::class,
         StepEntity::class,
         DailyLogEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 @TypeConverters(AppDatabase.Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract fun nodeDao(): NodeDao
-    abstract fun themeDao(): ThemeDao
     abstract fun memoDao(): MemoDao
     abstract fun projectDao(): ProjectDao
     abstract fun stepDao(): StepDao
     abstract fun dailyLogDao(): DailyLogDao
 
     class Converters {
-
-        @TypeConverter
-        fun fromNodeStatus(value: NodeStatus): String = value.name
-
-        @TypeConverter
-        fun toNodeStatus(value: String): NodeStatus = NodeStatus.valueOf(value)
 
         @TypeConverter
         fun fromProjectStatus(value: ProjectStatus): String = value.name
@@ -106,17 +96,23 @@ abstract class AppDatabase : RoomDatabase() {
                         "createdAt INTEGER NOT NULL" +
                         ")"
                 )
-                // 旧 nodes → memos へのベストエフォート移行（IDEA/DEFERRED/READY のみ）
                 db.execSQL(
                     "INSERT INTO memos (id, text, createdAt) " +
                         "SELECT id, title, createdAt FROM nodes " +
                         "WHERE status IN ('IDEA', 'DEFERRED', 'READY')"
                 )
-                // 旧 themes → projects へのベストエフォート移行
                 db.execSQL(
                     "INSERT INTO projects (id, title, createdAt) " +
                         "SELECT id, name, createdAt FROM themes"
                 )
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS nodes")
+                db.execSQL("DROP TABLE IF EXISTS edges")
+                db.execSQL("DROP TABLE IF EXISTS themes")
             }
         }
     }
