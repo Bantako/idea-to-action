@@ -67,7 +67,7 @@ fun TodayScreen(
 
         if (state.readyByTheme.isNotEmpty()) {
             item {
-                val label = if (state.aiRanked) "着手できます（AI おすすめ順）" else "着手できます"
+                val label = "着手できます"
                 SectionHeader(label)
             }
             state.readyByTheme.forEach { (theme, nodes) ->

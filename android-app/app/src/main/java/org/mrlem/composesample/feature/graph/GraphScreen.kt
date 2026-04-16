@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,13 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import org.mrlem.composesample.data.db.EdgeType
 import org.mrlem.composesample.data.db.NodeEntity
 import org.mrlem.composesample.data.db.NodeStatus
 import org.mrlem.composesample.data.db.ThemeEntity
@@ -50,158 +46,91 @@ fun GraphScreen(
     val state by viewModel.state.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(contentPadding),
-        contentPadding = PaddingValues(bottom = 16.dp),
-    ) {
-        // 接続ありゾーン
-        val connected = state.connectedItems
-        if (connected.isNotEmpty()) {
-            item(key = "connected_header") {
-                SectionHeader(title = "接続あり")
-            }
-            items(connected, key = { "c_${it.node.id}" }) { item ->
-                NodeItemRow(
-                    item = item,
-                    theme = state.themeFor(item.node.themeId),
-                    isSelected = item.node.id in state.selectedNodeIds,
-                    isSelectMode = state.isSelectMode,
-                    onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
-                    onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-            }
-        }
-
-        // 接続なしゾーン
-        val unconnected = state.unconnectedItems
-        if (unconnected.isNotEmpty()) {
-            item(key = "unconnected_header") {
-                SectionHeader(title = "接続なし")
-            }
-            items(unconnected, key = { "u_${it.node.id}" }) { item ->
-                NodeItemRow(
-                    item = item,
-                    theme = state.themeFor(item.node.themeId),
-                    isSelected = item.node.id in state.selectedNodeIds,
-                    isSelectMode = state.isSelectMode,
-                    onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
-                    onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-            }
-        }
-
-        if (connected.isEmpty() && unconnected.isEmpty()) {
-            item(key = "empty") {
-                Text(
-                    text = "ノードがありません",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            }
-        }
-
-        // 対応しないゾーン（折りたたみ）
-        val deferred = state.deferredItems
-        if (deferred.isNotEmpty()) {
-            item(key = "deferred_header") {
-                DeferredSectionHeader(
-                    count = deferred.size,
-                    expanded = state.showDeferred,
-                    onToggle = { viewModel.onAction(GraphAction.ToggleDeferred) },
-                )
-            }
-            if (state.showDeferred) {
-                items(deferred, key = { "d_${it.node.id}" }) { item ->
-                    DeferredNodeRow(
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            val items = state.allItems
+            if (items.isNotEmpty()) {
+                items(items, key = { "n_${it.node.id}" }) { item ->
+                    NodeItemRow(
                         item = item,
-                        onRestore = { viewModel.onAction(GraphAction.RestoreNode(item.node)) },
+                        theme = state.themeFor(item.node.themeId),
+                        isSelected = item.node.id in state.selectedNodeIds,
+                        isSelectMode = state.isSelectMode,
+                        onEdit = { viewModel.onAction(GraphAction.ShowEdit(item.node)) },
+                        onLongPress = { viewModel.onAction(GraphAction.ToggleSelect(item.node.id)) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
                 }
+            } else {
+                item(key = "empty") {
+                    Text(
+                        text = "ノードがありません",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
+
+            // 対応しないゾーン（折りたたみ）
+            val deferred = state.deferredItems
+            if (deferred.isNotEmpty()) {
+                item(key = "deferred_header") {
+                    DeferredSectionHeader(
+                        count = deferred.size,
+                        expanded = state.showDeferred,
+                        onToggle = { viewModel.onAction(GraphAction.ToggleDeferred) },
+                    )
+                }
+                if (state.showDeferred) {
+                    items(deferred, key = { "d_${it.node.id}" }) { item ->
+                        DeferredNodeRow(
+                            item = item,
+                            onRestore = { viewModel.onAction(GraphAction.RestoreNode(item.node)) },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
             }
         }
-    }
 
-    // 選択モードのボトムバー
-    AnimatedVisibility(
-        visible = state.isSelectMode,
-        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.secondaryContainer)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        // 選択モードのボトムバー
+        AnimatedVisibility(
+            visible = state.isSelectMode,
+            modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            Text(
-                text = "${state.selectedNodeIds.size}件選択中",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            Row {
-                if (state.themes.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.onAction(GraphAction.ShowBulkAssign) }) {
-                        Text("既存に追加")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${state.selectedNodeIds.size}件選択中",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Row {
+                    if (state.themes.isNotEmpty()) {
+                        TextButton(onClick = { viewModel.onAction(GraphAction.ShowBulkAssign) }) {
+                            Text("既存に追加")
+                        }
                     }
-                }
-                TextButton(onClick = { viewModel.onAction(GraphAction.ShowCreateTheme) }) {
-                    Text("テーマ命名")
-                }
-                TextButton(onClick = { viewModel.onAction(GraphAction.ClearSelection) }) {
-                    Text("キャンセル")
+                    TextButton(onClick = { viewModel.onAction(GraphAction.ShowCreateTheme) }) {
+                        Text("テーマ命名")
+                    }
+                    TextButton(onClick = { viewModel.onAction(GraphAction.ClearSelection) }) {
+                        Text("キャンセル")
+                    }
                 }
             }
         }
-    }
-    } // Box
-
-    // 接続追加ダイアログ
-    if (state.addEdgeTarget != null) {
-        val target = state.addEdgeTarget!!
-        val candidates = state.allNodes.filter { it.id != target.id }
-        AlertDialog(
-            onDismissRequest = { viewModel.onAction(GraphAction.DismissAddEdge) },
-            title = { Text("「${target.title}」に接続を追加") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(
-                            EdgeType.PREREQUISITE to "前提",
-                            EdgeType.RELATED to "関連",
-                        ).forEach { (type, label) ->
-                            FilterChip(
-                                selected = state.addEdgeType == type,
-                                onClick = { viewModel.onAction(GraphAction.SelectEdgeType(type)) },
-                                label = { Text(label) },
-                            )
-                        }
-                    }
-                    LazyColumn {
-                        items(candidates, key = { it.id }) { node ->
-                            TextButton(
-                                onClick = { viewModel.onAction(GraphAction.AddEdge(node.id)) },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(node.title)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { viewModel.onAction(GraphAction.DismissAddEdge) }) {
-                    Text("キャンセル")
-                }
-            },
-        )
     }
 
     // テーマ割り当てダイアログ
@@ -239,10 +168,9 @@ fun GraphScreen(
         )
     }
 
-    // 接続管理ダイアログ（ノードタップで開く）
+    // ノード編集ダイアログ
     if (state.editTarget != null) {
         val target = state.editTarget!!
-        val targetItem = state.allItems.find { it.node.id == target.id }
         var editTitle by remember(target.id) { mutableStateOf(target.title) }
         var editBody by remember(target.id) { mutableStateOf(target.body) }
         AlertDialog(
@@ -253,62 +181,15 @@ fun GraphScreen(
                         text = target.title,
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    val statusLabel = if (target.status == NodeStatus.READY) "READY ★" else target.status.name
                     Text(
-                        text = statusLabel,
+                        text = target.status.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (target.status == NodeStatus.READY)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.outline,
                     )
                 }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // --- 接続セクション（主役）---
-                    if (targetItem != null && targetItem.prereqs.isNotEmpty()) {
-                        Text(
-                            text = "前提",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            targetItem.prereqs.forEach { prereq ->
-                                SuggestionChip(
-                                    onClick = { viewModel.onAction(GraphAction.RemoveEdge(prereq.edge)) },
-                                    label = { Text("× ${prereq.fromNode.title}") },
-                                )
-                            }
-                        }
-                    }
-
-                    if (targetItem != null && targetItem.relatedNodes.isNotEmpty()) {
-                        Text(
-                            text = "関連",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                        Text(
-                            text = targetItem.relatedNodes.joinToString("、") { it.title },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
-                    TextButton(
-                        onClick = {
-                            viewModel.onAction(GraphAction.DismissEdit)
-                            viewModel.onAction(GraphAction.ShowAddEdge(target))
-                        },
-                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
-                    ) {
-                        Text("+ 接続を追加", style = MaterialTheme.typography.labelMedium)
-                    }
-
-                    HorizontalDivider()
-
-                    // --- 編集セクション（副）---
                     OutlinedTextField(
                         value = editTitle,
                         onValueChange = { editTitle = it },
@@ -409,9 +290,7 @@ fun GraphScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             state.themeSuggestions.forEach { suggestion ->
                                 SuggestionChip(
                                     onClick = { themeName = suggestion },
@@ -444,20 +323,6 @@ fun GraphScreen(
         )
     }
 }
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-    )
-}
-
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -510,11 +375,6 @@ private fun NodeItemRow(
     onEdit: () -> Unit,
     onLongPress: () -> Unit = {},
 ) {
-    val isReady = item.node.status == NodeStatus.READY
-    val startPadding = 16.dp
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val selectedColor = MaterialTheme.colorScheme.tertiary
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -523,29 +383,16 @@ private fun NodeItemRow(
                 onLongClick = onLongPress,
             )
             .background(
-                when {
-                    isSelected -> selectedColor.copy(alpha = 0.15f)
-                    isReady -> primaryColor.copy(alpha = 0.08f)
-                    else -> Color.Transparent
-                }
+                if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                else Color.Transparent
             )
             .then(
                 if (isSelected) Modifier.border(
                     width = 1.dp,
-                    color = selectedColor.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
                 ) else Modifier
             )
-            .drawBehind {
-                if (isReady && !isSelected) {
-                    drawLine(
-                        color = primaryColor,
-                        start = Offset(0f, 0f),
-                        end = Offset(0f, size.height),
-                        strokeWidth = 4.dp.toPx(),
-                    )
-                }
-            }
-            .padding(start = startPadding, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -556,14 +403,12 @@ private fun NodeItemRow(
                 text = item.node.title,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isReady) FontWeight.Bold else FontWeight.Normal,
-                color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = if (isReady) "READY ★" else item.node.status.name,
+                text = item.node.status.name,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                fontWeight = if (isReady) FontWeight.Bold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.outline,
             )
         }
 
@@ -572,24 +417,6 @@ private fun NodeItemRow(
                 text = "# ${theme.name}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-
-        if (item.prereqs.isNotEmpty()) {
-            Text(
-                text = "前提: " + item.prereqs.joinToString("、") { it.fromNode.title },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-        }
-
-        if (item.relatedNodes.isNotEmpty()) {
-            Text(
-                text = "関連: " + item.relatedNodes.joinToString("、") { it.title },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
