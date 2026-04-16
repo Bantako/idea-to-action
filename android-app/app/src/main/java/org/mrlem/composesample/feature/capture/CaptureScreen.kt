@@ -22,15 +22,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import org.mrlem.composesample.data.db.NodeStatus
+import org.mrlem.composesample.data.db.MemoEntity
+import org.mrlem.composesample.data.db.ProjectEntity
 
 @Composable
 fun CaptureScreen(
@@ -69,130 +67,122 @@ fun CaptureScreen(
 
         HorizontalDivider()
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp),
-        ) {
-            items(state.nodes, key = { it.id }) { node ->
-                val isReady = node.status == NodeStatus.READY
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.onAction(CaptureAction.ShowEdit(node)) }
-                        .padding(vertical = 12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = node.title,
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isReady) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (isReady) {
-                            Text(
-                                text = "READY ★",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
-                        }
-                    }
-                    if (node.body.isNotBlank()) {
-                        Text(
-                            text = node.body,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
-                    }
-                }
-                HorizontalDivider()
-            }
-
-            if (state.aiLog.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "AI がまとめた関連",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+        if (state.memos.isEmpty()) {
+            Text(
+                text = "未整理のメモはありません",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 24.dp),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp),
+            ) {
+                items(state.memos, key = { it.id }) { memo ->
+                    MemoItem(
+                        memo = memo,
+                        onClick = { viewModel.onAction(CaptureAction.ShowLinkSheet(memo)) },
                     )
-                }
-                items(state.aiLog, key = { "${it.newNodeTitle}-${it.relatedNodeTitle}" }) { entry ->
-                    Text(
-                        text = "「${entry.newNodeTitle}」→「${entry.relatedNodeTitle}」",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                    )
+                    HorizontalDivider()
                 }
             }
         }
     }
 
-    val editTarget = state.editTarget
-    if (editTarget != null) {
-        NodeEditDialog(
-            node = editTarget,
-            onDismiss = { viewModel.onAction(CaptureAction.DismissEdit) },
-            onSave = { title, body -> viewModel.onAction(CaptureAction.SaveEdit(title, body)) },
-            onDelete = { viewModel.onAction(CaptureAction.DeleteNode) },
+    val linkTarget = state.linkTarget
+    if (linkTarget != null) {
+        LinkToProjectDialog(
+            memo = linkTarget,
+            projects = state.projects,
+            aiSuggestedProjectIds = state.aiSuggestedProjectIds,
+            onDismiss = { viewModel.onAction(CaptureAction.DismissLinkSheet) },
+            onLinkToProject = { projectId -> viewModel.onAction(CaptureAction.LinkToProject(projectId)) },
+            onDelete = { viewModel.onAction(CaptureAction.DeleteMemo(linkTarget)) },
         )
     }
 }
 
 @Composable
-private fun NodeEditDialog(
-    node: org.mrlem.composesample.data.db.NodeEntity,
+private fun MemoItem(
+    memo: MemoEntity,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+    ) {
+        Text(
+            text = memo.text,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+@Composable
+private fun LinkToProjectDialog(
+    memo: MemoEntity,
+    projects: List<ProjectEntity>,
+    aiSuggestedProjectIds: List<Long>,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit,
+    onLinkToProject: (Long) -> Unit,
     onDelete: () -> Unit,
 ) {
-    var title by remember { mutableStateOf(node.title) }
-    var body by remember { mutableStateOf(node.body) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("ノードを編集") },
+        title = { Text("プロジェクトに紐付ける") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("タイトル") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "「${memo.text}」",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
                 )
-                OutlinedTextField(
-                    value = body,
-                    onValueChange = { body = it },
-                    label = { Text("メモ（任意）") },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (projects.isEmpty()) {
+                    Text(
+                        text = "プロジェクトがまだありません",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                } else {
+                    projects.forEach { project ->
+                        val isSuggested = project.id in aiSuggestedProjectIds
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onLinkToProject(project.id) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = project.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSuggested) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSuggested) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (isSuggested) {
+                                Text(
+                                    text = "AI提案",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onSave(title, body) },
-                enabled = title.isNotBlank(),
-            ) {
-                Text("保存")
-            }
+            TextButton(onClick = onDismiss) { Text("キャンセル") }
         },
         dismissButton = {
-            Row {
-                TextButton(onClick = onDelete) {
-                    Text("削除", color = MaterialTheme.colorScheme.error)
-                }
-                TextButton(onClick = onDismiss) { Text("キャンセル") }
+            TextButton(onClick = onDelete) {
+                Text("削除", color = MaterialTheme.colorScheme.error)
             }
         },
     )

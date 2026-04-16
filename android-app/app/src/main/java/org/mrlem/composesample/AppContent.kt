@@ -1,11 +1,15 @@
 package org.mrlem.composesample
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -15,8 +19,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import org.mrlem.composesample.feature.capture.CaptureScreen
-import org.mrlem.composesample.feature.graph.GraphScreen
 import org.mrlem.composesample.feature.today.TodayScreen
 
 @Composable
@@ -29,28 +34,44 @@ fun AppContent() {
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    label = { Text("Capture") },
+                    icon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
+                    label = { Text("Today") },
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
-                    label = { Text("Graph") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    label = { Text("Capture") },
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
-                    label = { Text("Today") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                    label = { Text("Projects") },
                 )
             }
         },
     ) { contentPadding ->
         when (selectedTab) {
-            0 -> CaptureScreen(contentPadding)
-            1 -> GraphScreen(contentPadding)
-            2 -> TodayScreen(contentPadding)
+            0 -> TodayScreen(contentPadding)
+            1 -> CaptureScreen(contentPadding)
+            2 -> ProjectsPlaceholder(contentPadding)
         }
+    }
+}
+
+@Composable
+private fun ProjectsPlaceholder(contentPadding: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Projects（準備中）",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.outline,
+        )
     }
 }
