@@ -83,6 +83,33 @@ fun TodayScreen(
 
         item {
             Text(
+                text = "今日だけのタスク",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
+        items(state.adHocSteps, key = { "adhoc_${it.id}" }) { step ->
+            PendingStepRow(
+                step = step,
+                onDone = { viewModel.onAction(TodayAction.MarkStepDone(step)) },
+            )
+            HorizontalDivider()
+        }
+
+        item {
+            AdHocStepInput(
+                value = state.adHocInput,
+                onValueChange = { viewModel.onAction(TodayAction.UpdateAdHocInput(it)) },
+                onSubmit = { viewModel.onAction(TodayAction.AddAdHocStep(state.adHocInput)) },
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+        item {
+            Text(
                 text = "今日の記録",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
@@ -186,6 +213,37 @@ private fun DailyLogRow(log: DailyLogEntity, onDelete: () -> Unit) {
         }
         TextButton(onClick = onDelete) {
             Text("削除", color = MaterialTheme.colorScheme.outline)
+        }
+    }
+}
+
+@Composable
+private fun AdHocStepInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text("タスクを追加…") },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+        )
+        Button(
+            onClick = onSubmit,
+            enabled = value.isNotBlank(),
+        ) {
+            Text("追加")
         }
     }
 }

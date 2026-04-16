@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "steps")
 data class StepEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val projectId: Long,
+    val projectId: Long?,
     val title: String,
     val sortOrder: Int = 0,
     val status: StepStatus = StepStatus.PENDING,

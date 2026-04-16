@@ -16,6 +16,9 @@ interface StepDao {
     @Query("SELECT * FROM steps WHERE projectId = :projectId AND status = 'PENDING' ORDER BY sortOrder")
     fun observePendingByProject(projectId: Long): Flow<List<StepEntity>>
 
+    @Query("SELECT * FROM steps WHERE projectId IS NULL AND status = 'PENDING' ORDER BY createdAt")
+    fun observePendingNoProject(): Flow<List<StepEntity>>
+
     @Insert
     suspend fun insert(step: StepEntity): Long
 

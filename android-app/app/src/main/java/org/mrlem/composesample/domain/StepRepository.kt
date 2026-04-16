@@ -15,8 +15,14 @@ class StepRepository @Inject constructor(
     fun observeByProject(projectId: Long): Flow<List<StepEntity>> =
         stepDao.observeByProject(projectId)
 
+    fun observePendingNoProject(): Flow<List<StepEntity>> =
+        stepDao.observePendingNoProject()
+
     suspend fun create(projectId: Long, title: String): Long =
         stepDao.insert(StepEntity(projectId = projectId, title = title.trim()))
+
+    suspend fun createAdHoc(title: String): Long =
+        stepDao.insert(StepEntity(projectId = null, title = title.trim()))
 
     suspend fun markDone(step: StepEntity) {
         stepDao.update(step.copy(status = StepStatus.DONE, doneAt = System.currentTimeMillis()))

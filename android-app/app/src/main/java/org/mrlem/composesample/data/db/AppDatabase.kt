@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StepEntity::class,
         DailyLogEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(AppDatabase.Converters::class)
@@ -113,6 +113,29 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE IF EXISTS nodes")
                 db.execSQL("DROP TABLE IF EXISTS edges")
                 db.execSQL("DROP TABLE IF EXISTS themes")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // projectId を NOT NULL → nullable に変更（SQLite は ALTER COLUMN 非対応のため再作成）
+                db.execSQL(
+                    "CREATE TABLE steps_new (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "projectId INTEGER, " +
+                        "title TEXT NOT NULL, " +
+                        "sortOrder INTEGER NOT NULL DEFAULT 0, " +
+                        "status TEXT NOT NULL DEFAULT 'PENDING', " +
+                        "doneAt INTEGER, " +
+                        "createdAt INTEGER NOT NULL" +
+                        ")"
+                )
+                db.execSQL(
+                    "INSERT INTO steps_new (id, projectId, title, sortOrder, status, doneAt, createdAt) " +
+                        "SELECT id, projectId, title, sortOrder, status, doneAt, createdAt FROM steps"
+                )
+                db.execSQL("DROP TABLE steps")
+                db.execSQL("ALTER TABLE steps_new RENAME TO steps")
             }
         }
 
