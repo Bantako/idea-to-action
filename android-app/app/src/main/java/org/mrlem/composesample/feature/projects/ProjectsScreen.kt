@@ -137,9 +137,9 @@ private fun ProjectItem(
                 fontWeight = if (isFocused) FontWeight.Bold else FontWeight.Normal,
                 color = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
-            if (project.goal != null) {
+            if (project.background != null) {
                 Text(
-                    text = project.goal,
+                    text = project.background,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )

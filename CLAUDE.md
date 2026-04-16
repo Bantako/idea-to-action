@@ -90,7 +90,7 @@ Today | Capture | Projects
 アクティブなプロジェクト一覧をフォーカス中のものを上部に強調して表示。
 
 プロジェクト詳細:
-- ゴール表示・編集（任意。書けると方向が定まる）
+- 背景メモ表示・編集（任意。なぜこれに取り組むかを後から書ける）
 - ステップ一覧（追加・完了マーク）
 - 紐付いたメモ一覧（元のアイデアを参照可能）
 - 実績ログ（DailyLog からフィルタ）
@@ -112,7 +112,7 @@ Memo（アイデア・思いついたこと）
 Project（取り組みのまとまり）
   id: Long
   title: String
-  goal: String?        // 任意。書けると方向が定まる
+  background: String?  // 任意。なぜこれに取り組むか（背景メモ）
   status: active | paused | archived
   focusedAt: Long?     // 「今これに集中」のタイムスタンプ
   createdAt: Long

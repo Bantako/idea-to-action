@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class ProjectEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val goal: String? = null,
+    val background: String? = null,
     val status: ProjectStatus = ProjectStatus.ACTIVE,
     val focusedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),

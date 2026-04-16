@@ -19,8 +19,8 @@ class ProjectRepository @Inject constructor(
     suspend fun create(title: String): Long =
         projectDao.insert(ProjectEntity(title = title.trim()))
 
-    suspend fun updateGoal(project: ProjectEntity, goal: String) {
-        projectDao.update(project.copy(goal = goal.trim().ifEmpty { null }))
+    suspend fun updateBackground(project: ProjectEntity, background: String) {
+        projectDao.update(project.copy(background = background.trim().ifEmpty { null }))
     }
 
     suspend fun setFocus(project: ProjectEntity) {

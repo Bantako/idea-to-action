@@ -97,34 +97,50 @@ fun ProjectDetailScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ゴール表示・編集
-            if (state.editingGoal) {
+            // 背景メモ表示・編集
+            if (state.editingBackground) {
                 OutlinedTextField(
-                    value = state.goalInput,
-                    onValueChange = { viewModel.onGoalInputChanged(it) },
-                    placeholder = { Text("ゴールを入力…") },
+                    value = state.backgroundInput,
+                    onValueChange = { viewModel.onBackgroundInputChanged(it) },
+                    placeholder = { Text("なぜこれに取り組むか…（任意）") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 Row(modifier = Modifier.padding(top = 4.dp)) {
-                    Button(onClick = { viewModel.saveGoal() }) { Text("保存") }
+                    Button(onClick = { viewModel.saveBackground() }) { Text("保存") }
                     Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { viewModel.cancelEditingGoal() }) { Text("キャンセル") }
+                    TextButton(onClick = { viewModel.cancelEditingBackground() }) { Text("キャンセル") }
                 }
-            } else {
+            } else if (project.background != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = project.goal ?: "ゴールを設定する",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (project.goal != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { viewModel.startEditingGoal() }) {
-                        Icon(Icons.Default.Edit, contentDescription = "ゴールを編集", tint = MaterialTheme.colorScheme.outline)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "背景メモ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        Text(
+                            text = project.background,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
+                    IconButton(onClick = { viewModel.startEditingBackground() }) {
+                        Icon(Icons.Default.Edit, contentDescription = "背景メモを編集", tint = MaterialTheme.colorScheme.outline)
+                    }
+                }
+            } else {
+                TextButton(
+                    onClick = { viewModel.startEditingBackground() },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "+ 背景メモを追加",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
                 }
             }
 

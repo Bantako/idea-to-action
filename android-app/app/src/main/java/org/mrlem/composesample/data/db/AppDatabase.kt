@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         StepEntity::class,
         DailyLogEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(AppDatabase.Converters::class)
@@ -113,6 +113,28 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE IF EXISTS nodes")
                 db.execSQL("DROP TABLE IF EXISTS edges")
                 db.execSQL("DROP TABLE IF EXISTS themes")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // goal → background へ rename（SQLite は RENAME COLUMN 非対応のため再作成）
+                db.execSQL(
+                    "CREATE TABLE projects_new (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "background TEXT, " +
+                        "status TEXT NOT NULL DEFAULT 'ACTIVE', " +
+                        "focusedAt INTEGER, " +
+                        "createdAt INTEGER NOT NULL" +
+                        ")"
+                )
+                db.execSQL(
+                    "INSERT INTO projects_new (id, title, background, status, focusedAt, createdAt) " +
+                        "SELECT id, title, goal, status, focusedAt, createdAt FROM projects"
+                )
+                db.execSQL("DROP TABLE projects")
+                db.execSQL("ALTER TABLE projects_new RENAME TO projects")
             }
         }
     }

@@ -23,8 +23,8 @@ data class ProjectDetailState(
     val steps: List<StepEntity> = emptyList(),
     val memos: List<MemoEntity> = emptyList(),
     val stepInput: String = "",
-    val editingGoal: Boolean = false,
-    val goalInput: String = "",
+    val editingBackground: Boolean = false,
+    val backgroundInput: String = "",
 )
 
 @HiltViewModel
@@ -82,26 +82,26 @@ class ProjectDetailViewModel @Inject constructor(
         }
     }
 
-    fun startEditingGoal() {
-        val current = _state.value.project?.goal ?: ""
-        _state.update { it.copy(editingGoal = true, goalInput = current) }
+    fun startEditingBackground() {
+        val current = _state.value.project?.background ?: ""
+        _state.update { it.copy(editingBackground = true, backgroundInput = current) }
     }
 
-    fun onGoalInputChanged(text: String) {
-        _state.update { it.copy(goalInput = text) }
+    fun onBackgroundInputChanged(text: String) {
+        _state.update { it.copy(backgroundInput = text) }
     }
 
-    fun saveGoal() {
+    fun saveBackground() {
         val project = _state.value.project ?: return
-        val goal = _state.value.goalInput
-        _state.update { it.copy(editingGoal = false) }
+        val background = _state.value.backgroundInput
+        _state.update { it.copy(editingBackground = false) }
         viewModelScope.launch {
-            projectRepository.updateGoal(project, goal)
+            projectRepository.updateBackground(project, background)
         }
     }
 
-    fun cancelEditingGoal() {
-        _state.update { it.copy(editingGoal = false, goalInput = "") }
+    fun cancelEditingBackground() {
+        _state.update { it.copy(editingBackground = false, backgroundInput = "") }
     }
 
     fun setFocus() {
