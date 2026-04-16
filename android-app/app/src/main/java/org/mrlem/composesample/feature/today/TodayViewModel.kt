@@ -28,7 +28,6 @@ data class TodayState(
     val adHocSteps: List<StepEntity> = emptyList(),
     val todayLogs: List<DailyLogEntity> = emptyList(),
     val manualInput: String = "",
-    val adHocInput: String = "",
 )
 
 sealed class TodayAction {
@@ -36,8 +35,6 @@ sealed class TodayAction {
     data class AddManualLog(val what: String) : TodayAction()
     data class DeleteLog(val log: DailyLogEntity) : TodayAction()
     data class UpdateManualInput(val text: String) : TodayAction()
-    data class AddAdHocStep(val title: String) : TodayAction()
-    data class UpdateAdHocInput(val text: String) : TodayAction()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -110,15 +107,7 @@ class TodayViewModel @Inject constructor(
                     is TodayAction.UpdateManualInput -> {
                         _state.update { it.copy(manualInput = action.text) }
                     }
-                    is TodayAction.AddAdHocStep -> {
-                        if (action.title.isNotBlank()) {
-                            stepRepository.createAdHoc(action.title)
-                            _state.update { it.copy(adHocInput = "") }
-                        }
-                    }
-                    is TodayAction.UpdateAdHocInput -> {
-                        _state.update { it.copy(adHocInput = action.text) }
-                    }
+
                 }
             }
         }

@@ -99,6 +99,7 @@ fun CaptureScreen(
             onDismiss = { viewModel.onAction(CaptureAction.DismissLinkSheet) },
             onLinkToProject = { projectId -> viewModel.onAction(CaptureAction.LinkToProject(projectId)) },
             onDelete = { viewModel.onAction(CaptureAction.DeleteMemo(linkTarget)) },
+            onDoToday = { viewModel.onAction(CaptureAction.DoToday(linkTarget)) },
         )
     }
 }
@@ -129,6 +130,7 @@ private fun LinkToProjectDialog(
     onDismiss: () -> Unit,
     onLinkToProject: (Long) -> Unit,
     onDelete: () -> Unit,
+    onDoToday: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -178,11 +180,14 @@ private fun LinkToProjectDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("キャンセル") }
+            TextButton(onClick = onDoToday) { Text("今日やる") }
         },
         dismissButton = {
-            TextButton(onClick = onDelete) {
-                Text("削除", color = MaterialTheme.colorScheme.error)
+            Row {
+                TextButton(onClick = onDelete) {
+                    Text("削除", color = MaterialTheme.colorScheme.error)
+                }
+                TextButton(onClick = onDismiss) { Text("キャンセル") }
             }
         },
     )

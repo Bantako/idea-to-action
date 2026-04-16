@@ -98,14 +98,6 @@ fun TodayScreen(
             HorizontalDivider()
         }
 
-        item {
-            AdHocStepInput(
-                value = state.adHocInput,
-                onValueChange = { viewModel.onAction(TodayAction.UpdateAdHocInput(it)) },
-                onSubmit = { viewModel.onAction(TodayAction.AddAdHocStep(state.adHocInput)) },
-            )
-        }
-
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
         item {
@@ -213,37 +205,6 @@ private fun DailyLogRow(log: DailyLogEntity, onDelete: () -> Unit) {
         }
         TextButton(onClick = onDelete) {
             Text("削除", color = MaterialTheme.colorScheme.outline)
-        }
-    }
-}
-
-@Composable
-private fun AdHocStepInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text("タスクを追加…") },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-        )
-        Button(
-            onClick = onSubmit,
-            enabled = value.isNotBlank(),
-        ) {
-            Text("追加")
         }
     }
 }

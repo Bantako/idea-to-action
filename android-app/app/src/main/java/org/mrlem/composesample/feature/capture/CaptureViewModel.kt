@@ -14,6 +14,7 @@ import org.mrlem.composesample.data.db.MemoEntity
 import org.mrlem.composesample.data.db.ProjectEntity
 import org.mrlem.composesample.domain.MemoRepository
 import org.mrlem.composesample.domain.ProjectRepository
+import org.mrlem.composesample.domain.StepRepository
 import javax.inject.Inject
 
 data class CaptureState(
@@ -31,12 +32,14 @@ sealed class CaptureAction {
     object DismissLinkSheet : CaptureAction()
     data class LinkToProject(val projectId: Long) : CaptureAction()
     data class DeleteMemo(val memo: MemoEntity) : CaptureAction()
+    data class DoToday(val memo: MemoEntity) : CaptureAction()
 }
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
     private val memoRepository: MemoRepository,
     private val projectRepository: ProjectRepository,
+    private val stepRepository: StepRepository,
     private val aiService: AiService,
 ) : UnidirectionalViewModel<CaptureState, CaptureAction, Unit>() {
 
@@ -69,6 +72,11 @@ class CaptureViewModel @Inject constructor(
                     }
                     is CaptureAction.DeleteMemo -> {
                         _state.update { it.copy(linkTarget = null) }
+                        memoRepository.delete(action.memo)
+                    }
+                    is CaptureAction.DoToday -> {
+                        _state.update { it.copy(linkTarget = null) }
+                        stepRepository.createAdHoc(action.memo.text)
                         memoRepository.delete(action.memo)
                     }
                 }
