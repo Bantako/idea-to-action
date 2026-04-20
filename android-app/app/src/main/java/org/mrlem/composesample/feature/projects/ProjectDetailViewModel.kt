@@ -16,6 +16,7 @@ import org.mrlem.composesample.data.db.StepEntity
 import org.mrlem.composesample.domain.MemoRepository
 import org.mrlem.composesample.domain.ProjectRepository
 import org.mrlem.composesample.domain.StepRepository
+import org.mrlem.composesample.domain.UsageLogRepository
 import javax.inject.Inject
 
 data class ProjectDetailState(
@@ -32,6 +33,7 @@ class ProjectDetailViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val stepRepository: StepRepository,
     private val memoRepository: MemoRepository,
+    private val usageLogRepository: UsageLogRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProjectDetailState())
@@ -67,6 +69,7 @@ class ProjectDetailViewModel @Inject constructor(
         _state.update { it.copy(stepInput = "") }
         viewModelScope.launch {
             stepRepository.create(currentProjectId, title)
+            usageLogRepository.record("step_added")
         }
     }
 
@@ -108,6 +111,7 @@ class ProjectDetailViewModel @Inject constructor(
         val project = _state.value.project ?: return
         viewModelScope.launch {
             projectRepository.setFocus(project)
+            usageLogRepository.record("project_focused")
         }
     }
 

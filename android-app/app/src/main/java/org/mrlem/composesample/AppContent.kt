@@ -10,20 +10,26 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import org.mrlem.composesample.feature.capture.CaptureScreen
 import org.mrlem.composesample.feature.projects.ProjectDetailScreen
 import org.mrlem.composesample.feature.projects.ProjectsScreen
 import org.mrlem.composesample.feature.today.TodayScreen
 
 @Composable
-fun AppContent() {
+fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedProjectId by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(selectedTab) {
+        viewModel.onTabOpened(selectedTab)
+    }
 
     Scaffold(
         bottomBar = {

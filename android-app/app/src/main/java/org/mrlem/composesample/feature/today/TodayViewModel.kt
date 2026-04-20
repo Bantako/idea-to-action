@@ -20,6 +20,7 @@ import org.mrlem.composesample.data.db.StepStatus
 import org.mrlem.composesample.domain.DailyLogRepository
 import org.mrlem.composesample.domain.ProjectRepository
 import org.mrlem.composesample.domain.StepRepository
+import org.mrlem.composesample.domain.UsageLogRepository
 import javax.inject.Inject
 
 data class TodayState(
@@ -43,6 +44,7 @@ class TodayViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val stepRepository: StepRepository,
     private val dailyLogRepository: DailyLogRepository,
+    private val usageLogRepository: UsageLogRepository,
     private val aiService: AiService,
 ) : UnidirectionalViewModel<TodayState, TodayAction, Unit>() {
 
@@ -94,11 +96,13 @@ class TodayViewModel @Inject constructor(
                     is TodayAction.MarkStepDone -> {
                         stepRepository.markDone(action.step)
                         dailyLogRepository.createFromStep(action.step)
+                        usageLogRepository.record("step_done")
                     }
                     is TodayAction.AddManualLog -> {
                         if (action.what.isNotBlank()) {
                             dailyLogRepository.createManual(action.what)
                             _state.update { it.copy(manualInput = "") }
+                            usageLogRepository.record("log_recorded")
                         }
                     }
                     is TodayAction.DeleteLog -> {

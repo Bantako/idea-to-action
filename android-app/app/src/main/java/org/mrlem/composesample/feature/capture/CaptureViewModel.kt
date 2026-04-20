@@ -15,6 +15,7 @@ import org.mrlem.composesample.data.db.ProjectEntity
 import org.mrlem.composesample.domain.MemoRepository
 import org.mrlem.composesample.domain.ProjectRepository
 import org.mrlem.composesample.domain.StepRepository
+import org.mrlem.composesample.domain.UsageLogRepository
 import javax.inject.Inject
 
 data class CaptureState(
@@ -40,6 +41,7 @@ class CaptureViewModel @Inject constructor(
     private val memoRepository: MemoRepository,
     private val projectRepository: ProjectRepository,
     private val stepRepository: StepRepository,
+    private val usageLogRepository: UsageLogRepository,
     private val aiService: AiService,
 ) : UnidirectionalViewModel<CaptureState, CaptureAction, Unit>() {
 
@@ -69,6 +71,7 @@ class CaptureViewModel @Inject constructor(
                         val target = _state.value.linkTarget ?: return@collect
                         _state.update { it.copy(linkTarget = null) }
                         memoRepository.linkToProject(target, action.projectId)
+                        usageLogRepository.record("memo_linked")
                     }
                     is CaptureAction.DeleteMemo -> {
                         _state.update { it.copy(linkTarget = null) }
@@ -89,6 +92,7 @@ class CaptureViewModel @Inject constructor(
         if (text.isEmpty()) return
         _state.update { it.copy(input = "") }
         memoRepository.create(text)
+        usageLogRepository.record("memo_captured")
         if (aiService.isAvailable) {
             val projects = _state.value.projects
             if (projects.isNotEmpty()) {
