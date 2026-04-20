@@ -12,6 +12,7 @@ import org.mrlem.composesample.data.db.DailyLogDao
 import org.mrlem.composesample.data.db.MemoDao
 import org.mrlem.composesample.data.db.ProjectDao
 import org.mrlem.composesample.data.db.StepDao
+import org.mrlem.composesample.data.db.UsageLogDao
 import javax.inject.Singleton
 
 @Module
@@ -28,6 +29,7 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
                 AppDatabase.MIGRATION_5_6,
+                AppDatabase.MIGRATION_6_7,
             )
             .build()
 
@@ -42,4 +44,7 @@ object DatabaseModule {
 
     @Provides
     fun provideDailyLogDao(db: AppDatabase): DailyLogDao = db.dailyLogDao()
+
+    @Provides
+    fun provideUsageLogDao(db: AppDatabase): UsageLogDao = db.usageLogDao()
 }

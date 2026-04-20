@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProjectEntity::class,
         StepEntity::class,
         DailyLogEntity::class,
+        UsageLogEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @TypeConverters(AppDatabase.Converters::class)
@@ -24,6 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun projectDao(): ProjectDao
     abstract fun stepDao(): StepDao
     abstract fun dailyLogDao(): DailyLogDao
+    abstract fun usageLogDao(): UsageLogDao
 
     class Converters {
 
@@ -136,6 +138,19 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE steps")
                 db.execSQL("ALTER TABLE steps_new RENAME TO steps")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS usage_logs (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "timestamp INTEGER NOT NULL, " +
+                        "event TEXT NOT NULL, " +
+                        "metadata TEXT" +
+                        ")"
+                )
             }
         }
 
