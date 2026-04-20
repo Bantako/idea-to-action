@@ -1,6 +1,8 @@
 package org.mrlem.composesample.feature.projects
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,10 +33,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import org.mrlem.composesample.data.db.ProjectEntity
 import org.mrlem.composesample.data.db.ProjectStatus
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProjectsScreen(
     contentPadding: PaddingValues,
     onProjectClick: (Long) -> Unit,
+    onOpenStats: () -> Unit = {},
     viewModel: ProjectsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -54,6 +58,10 @@ fun ProjectsScreen(
             Text(
                 text = "プロジェクト",
                 style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.combinedClickable(
+                    onClick = {},
+                    onLongClick = onOpenStats,
+                ),
             )
             TextButton(onClick = { viewModel.showCreateDialog() }) {
                 Icon(Icons.Default.Add, contentDescription = null)

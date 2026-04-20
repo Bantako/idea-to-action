@@ -20,12 +20,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import org.mrlem.composesample.feature.capture.CaptureScreen
 import org.mrlem.composesample.feature.projects.ProjectDetailScreen
 import org.mrlem.composesample.feature.projects.ProjectsScreen
+import org.mrlem.composesample.feature.stats.StatsScreen
 import org.mrlem.composesample.feature.today.TodayScreen
 
 @Composable
 fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedProjectId by remember { mutableStateOf<Long?>(null) }
+    var showStatsScreen by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
         viewModel.onTabOpened(selectedTab)
@@ -57,6 +59,10 @@ fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
     ) { contentPadding ->
         val pid = selectedProjectId
         when {
+            showStatsScreen -> StatsScreen(
+                contentPadding = contentPadding,
+                onBack = { showStatsScreen = false },
+            )
             selectedTab == 0 -> TodayScreen(contentPadding, onNavigateToProjects = { selectedTab = 2 })
             selectedTab == 1 -> CaptureScreen(contentPadding)
             selectedTab == 2 && pid != null -> ProjectDetailScreen(
@@ -67,6 +73,7 @@ fun AppContent(viewModel: AppViewModel = hiltViewModel()) {
             else -> ProjectsScreen(
                 contentPadding = contentPadding,
                 onProjectClick = { projectId -> selectedProjectId = projectId },
+                onOpenStats = { showStatsScreen = true },
             )
         }
     }
